@@ -510,37 +510,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     if(out_contour_ines.size() == 0)
         qDebug("error: no convex detected!");
 
-//    Mat contex_line = Mat::zeros( contex_img.size(), CV_8UC1);
-//    deque<Point> out_contour = out_contour_ines[0];
-//    for(int i = 0; i < out_contour.size(); i ++){
-//        contex_line.at<uchar>(out_contour[i]) = 255;
-//    }
-////    floodFill(contex_img,Point(121,146),Scalar(255,255,255),&ccomp, Scalar(0,0,0), Scalar(0,0,0),flags);
-//    imwrite(folder_path + "contex_line.png",contex_line);
-
-//    imageBlueChannel += thin;
-//    merge(channels,contex_img);
-
-//    imshow( "contex_img", contex_img );
-
-    /***************************************/
-
-    /***************change to read end *******************/
-
-
-    /***********remove outline******************/
-
-//    vector<Mat> channels;
-//    split(thin_inv,channels);//分离色彩通道
-//    Mat imageBlueChannel = channels.at(0);
-//    Mat imageGreenChannel = channels.at(1);
-//    Mat imageRedChannel = channels.at(2);
-
-//    imshow("thin_inv",thin_inv);
-
-    /***************************************/
-
-
     //thinning
 //    imshow("inv",src_gray_inv);
 
@@ -791,33 +760,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     /***************************************/
 
-    /********** find curve *********/
-
-//    for (int i = 0; i < thin_inv.rows; i++)
-//    {
-//        uchar* data = thin_inv.ptr<uchar>(i);
-//        for (int j = 0; j < thin_inv.cols; j++)
-//        {
-//            if (data[j] == 255)
-//            {
-//                Point this_point(j,i);
-//                if(thin_inv.at<uchar>(this_point) == 255)
-//                    qDebug("alarm: row equal to x");
-//                else
-//                    qDebug("error: row not equal to x");
-
-
-//                if(findTjunction(thin_inv, this_point, neighbor_points)){
-//                    for(int i = 0; i < neighbor_points.size();i++){
-//                        thin_inv.at<uchar>(this_point + neighbor_points[i]) = 0;
-//                    }
-//                    thin_inv.at<uchar>(this_point) = 0;
-//                    break;
-//                }
-//            }
-//        }
-//    }
-
 
     vector<deque<Point>> lines;
     vector<deque<Point>> lines_ori;
@@ -847,78 +789,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     /***************************************/
 
-
-//    //draw lines
-//    Mat draw_img = Mat(src.rows, src.cols, CV_8UC3, Scalar(0,0,0));
-
-//    int count_line = 0;
-//    for (int i = 0; i < lines.size(); i++)
-//    {
-//        count_line ++;
-//        color = Scalar( rng.uniform(50, 255), rng.uniform(50,255), rng.uniform(50,255) );
-//        for (int j = 0; j < lines[i].size(); j++)
-//        {
-//            draw_img.at<Vec3b>(lines[i][j]) = Vec3b(color[0], color[1], color[2]);
-//        }
-//    }
-
-//    vector<Mat> channels;
-//    split(draw_img,channels);//分离色彩通道
-//    Mat imageBlueChannel = channels.at(0);
-//    Mat imageGreenChannel = channels.at(1);
-//    Mat imageRedChannel = channels.at(2);
-
-//    imageBlueChannel += thin;
-//    imageGreenChannel += thin;
-//    imageRedChannel += thin;
-
-//////    imageGreenChannel += src_gray_inv * 0.5;
-
-//    merge(channels,draw_img);
-//    imshow("draw_img", draw_img);
-
-//    Mat frameline;
-//    cvtColor(draw_img,frameline,CV_BGR2GRAY);
-
-//    threshold(frameline, frameline, 40, 255, CV_THRESH_BINARY);
-
-//    imshow("frameline ",draw_img);
-//    imwrite(folder_path + "FloodFill.png",draw_img);
-//    Mat draw_img = imread(folder_path + "FloodFill.png");
-
-//    qDebug("line size = %d, %d valid",lines.size(),count_line);
-
-    /*******************************/
-
-    /********* find end of finger *************/
-
-//    for(vector<Point>::iterator itLine = lines.begin(); itLine != lines.end();itLine ++){
-//        vector<Point>
-//        for (int j = 0; j < *itLine.size(); j++)
-
-
-//    }
-
-//    vector<deque<Point>> fingerLines;
-//    vector<vector<Point>> fingerJoints;
-//    for(int i = 0; i < lines.size(); i++){
-//        vector<Point> joints;
-//        for (int j = 0; j < lines[i].size(); j++)
-//        {
-//            for(int k = 0; k <crossPoints.size();k++){
-//                if(lines[i][j] == crossPoints[k]){
-//                    joints.push_back(crossPoints[k]);
-//                    circle(imgJoints, crossPoints[k], 1, Scalar(255,0,0), -1, 8, 0);
-//                }
-//            }
-//        }
-//        if(joints.size() > 0){
-//            fingerLines.push_back(lines[i]);
-//            fingerJoints.push_back(joints);
-//        }
-//    }
-
-//    imshow("imgJoints",imgJoints);
     imwrite(folder_path + "Contours.png",imgJoints);
 
     /*******************************/
@@ -1055,21 +925,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     Mat largeCircle_b = largeCircle.clone();
 
     vector<Point> finger_ends;
-//    vector<deque<Point>> finger_ends_lines;
-
-//    findLines(largeCircle,finger_ends_lines);
-
-//    for(int i = 0;i < finger_ends_lines.size();i++){
-//        deque<Point> line = finger_ends_lines[i];
-//        Point P1 = *(line.begin());
-//        Point P2 = *(line.end() - 1);
-//        //maxdist
-//        double dist1 = sqrt((P1 - center).dot(P1 - center));
-//        double dist2 = sqrt((P2 - center).dot(P2 - center));
-//        if(dist1 > dist2){
-
-//        }
-//    }
 
 
     x = x1,y = y1,d1 = 1-r1;
@@ -1335,14 +1190,11 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
         vector<Point> pts;
         finger_ends.clear();
 
-//        if(pts1.size() > pts2.size()){
-//            pts = pts1;
-//        }else{
-//            pts = pts2;
-//        }
-
-        pts = pts1;
-
+        if(pts1.size() > pts2.size()){
+            pts = pts1;
+        }else{
+            pts = pts2;
+        }
 
         int end_dist[pts.size()];
 //        if(pts.size() > 5){
@@ -1447,46 +1299,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
         }
     }
 
-
-    //        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() > 3){
-    //            int halfIdx = fingerLines[i].size() / 2;
-    //            deque<Point> tmpLine(fingerLines[i].begin(), fingerLines[i].begin() + halfIdx);
-    //            fingerLines[i] = tmpLine;
-    //            int j = 0;
-    //            for(; j < fingerJointsIdx.size();j ++){
-    //                if(fingerJointsIdx[i][j] > halfIdx)
-    //                    break;
-    //            }
-    //            vector<int> tmpJoints(fingerJointsIdx[i].begin(), fingerJointsIdx[i].begin() + j);
-    //            fingerJointsIdx[i] = tmpJoints;
-    //            vector<Point> tmpPoints(fingerJoints[i].begin(), fingerJoints[i].begin() + j);
-    //            fingerJoints[i] = tmpPoints;
-    //            qDebug("now %d_______  fingerJoints = %d",i,fingerJoints[i].size());
-    //        }
-
-//    for(int i = 0; i < finger_ends.size(); i ++){
-//        qDebug()<<"fingerends_line idx = "<<fingerends_ol_idx[i];
-//        for(int j = 0; j < i; j ++){
-//            if(fingerends_ol_idx[i] == fingerends_ol_idx[j]){
-//                int idx = fingerends_ol_idx[i];
-//                int halfIdx = lines[idx].size() / 2;
-//                deque<Point> tmpLine1(lines[i].begin(), lines[i].begin() + halfIdx);
-//                lines[i] = tmpLine1;
-//                vector<Point> tmpPoints(points_onlines[i].begin(),points_onlines[i].begin() + 1);
-//                points_onlines = tmpPoints;
-
-//                deque<Point> tmpLine2(lines[i].begin() + halfIdx, lines[i].end());
-//                reverse(tmpLine2.begin(),tmpLine2.end());
-
-//                lines.push_back(tmpLine2);
-//                int j = 0;
-//                for(; j < fingerJointsIdx.size();j ++){
-//                    if(fingerJointsIdx[i][j] > halfIdx)
-//                        break;
-//                }
-//            }
-//        }
-//    }
 
     Point fakeEnds(-1, -1);
 
@@ -1650,22 +1462,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
         if(fingerJoints[i][0] == fakeEnds && fingerJoints[i].size() > 3){
         }
 
-        //        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() > 3){
-//            int halfIdx = fingerLines[i].size() / 2;
-//            deque<Point> tmpLine(fingerLines[i].begin(), fingerLines[i].begin() + halfIdx);
-//            fingerLines[i] = tmpLine;
-//            int j = 0;
-//            for(; j < fingerJointsIdx.size();j ++){
-//                if(fingerJointsIdx[i][j] > halfIdx)
-//                    break;
-//            }
-//            vector<int> tmpJoints(fingerJointsIdx[i].begin(), fingerJointsIdx[i].begin() + j);
-//            fingerJointsIdx[i] = tmpJoints;
-//            vector<Point> tmpPoints(fingerJoints[i].begin(), fingerJoints[i].begin() + j);
-//            fingerJoints[i] = tmpPoints;
-//            qDebug("now %d_______  fingerJoints = %d",i,fingerJoints[i].size());
-//        }
-
         if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 1){
             qDebug("finger 1 found!");
             Point end = fingerJoints[i][0];
@@ -1811,85 +1607,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
         }
     }
 
-//    for(int i = 0; i < fingerJoints.size(); i ++){
-
-
-//    }
-
-
-//    for(int i = 0; i < lines.size(); i ++){
-//        vector<Point> points_online;
-
-//        for(int k = 0; k < lines[i].size();k++){
-//            Point p = lines[i][k];
-
-//            vector<Point> _finger_ends;
-//            vector<Point> _crossPoints;
-//            for(int m = 0; m < finger_ends.size(); m ++){
-//                _finger_ends.push_back(finger_ends[m]);
-//            }
-
-//            for(int m = 0; m < crossPoints.size(); m ++){
-//                _crossPoints.push_back(crossPoints[m]);
-//            }
-
-//            int count = _finger_ends.size();
-//            while(_finger_ends.size() > 0){
-//                count --;
-//                Point pt = _finger_ends.back();
-//                _finger_ends.pop_back();
-//                if(p == pt){
-//                    points_online.push_back(p);
-//                }else{
-//                    int found = 0;
-//                    for(int ii = 0;ii < neighbor_points.size(); ii ++){
-//                        Point tmppoint = pt + neighbor_points[ii];
-//                        if(p == tmppoint){
-//                            points_online.push_back(p);
-//                            found = 1;
-//                            break;
-//                        }
-//                    }
-//                }
-//            }
-
-////            for(int m = 0; m < _crossPoints.size();m++){
-////                Point pt = _crossPoints[m];
-////                if(p == pt){
-////                    points_online.push_back(p);
-////                }
-////            }
-
-//            count = _crossPoints.size();
-
-//            while(_crossPoints.size() > 0){
-//                count --;
-//                Point pt = _crossPoints.back();
-//                _crossPoints.pop_back();
-//                if(p == pt){
-//                    points_online.push_back(p);
-//                }
-//                else{
-//                    int found = 0;
-//                    for(int ii = 0;ii < neighbor_points.size(); ii ++){
-//                        Point tmppoint = pt + neighbor_points[ii];
-//                        if(p == tmppoint){
-//                            points_online.push_back(p);
-//                            found = 1;
-//                            break;
-//                        }
-//                    }
-//                }
-//            }
-
-//        }
-
-//        if(points_online.size() > 0){
-//            fingerLines.push_back(lines[i]);
-//            fingerJoints.push_back(points_online);
-//        }
-//    }
-
     for(int i = 0; i < fingerLines.size(); i ++){
         for(int j = 0; j < fingerLines[i].size(); j ++){
             finger_img.at<uchar>( fingerLines[i][j]) = 255;
@@ -1928,175 +1645,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     /***************************************/
 
-    /************* find hand convex *********/
-
-//    int dilation_type = MORPH_RECT;
-//    int dilation_size = 10;
-
-//    element1 = getStructuringElement( dilation_type,
-//                                          Size( 2*dilation_size + 1, 2*dilation_size+1 ),
-//                                          Point( dilation_size, dilation_size ) );
-
-
-//    dilate( thin_inv, thin_inv, element1 );
-//    imshow("thin_inv",thin_inv);
-
-
-    /************** find hand-finger *****************/
-
-
-//    for(int i = 0; i < fingerJoints.size();i++){
-//        if(fingerJoints[i].size() > 2){
-//            splitFingerLine()
-//        };
-//    }
-
-    /*******************************/
-
-//    imshow("thin_inv",thin_inv);
-
-//    Mat R = Mat(src_gray.rows, src_gray.cols, CV_8UC1, Scalar(0));
-//    Mat G = thin.clone();
-//    Mat B = Mat(src_gray.rows, src_gray.cols, CV_8UC1, Scalar(0));
-//    vector<Mat> bgr;
-//    bgr.push_back(B);
-//    bgr.push_back(G);
-//    bgr.push_back(R);
-//    Mat thin_color = Mat(src_gray.rows,src_gray.cols, CV_8UC3,Scalar(0,0,0));
-//    merge(bgr, thin_color);
-//    imshow("thin_color",thin);
-//    imwrite(folder_path + "thin.png",thin);
-
-    /*************/
-
-
-
-//    /**********flood fill*************/
-
-//    Mat src_flood = threshold_output.clone();
-//    floodFill(src_flood,Point(0,0),Scalar(128,128,128),&ccomp, Scalar(25,25,25), Scalar(25,25,25),flags);
-////    imshow("src flood", src_flood);
-
-//    /*******************************/
-
-
-    /*** here here here ***/
-
-
-    /*******************************/
-//    threshold(src_gray,src_gray,128,255,THRESH_BINARY);//转换成2值图像
-////    imshow("src_gray",src_gray);
-//    // Canny detector
-//    Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size );
-
-//    /// Using Canny's output as a mask, we display our result
-//    dst = Scalar::all(0);
-
-//    src.copyTo( dst, detected_edges);
-////    threshold(dst,dst,128,255,THRESH_BINARY);//转换成2值图像
-//    imwrite(folder_path + "edges.png",dst);
-
-////    imshow("detected_edges",dst);
-
-////    int flags = 8 + (255 << 8) + CV_FLOODFILL_FIXED_RANGE + CV_FLOODFILL_MASK_ONLY;//标识符的0~7位为g_nConnectivity，8~15位为g_nNewMaskVal左移8位的值，16~23位为CV_FLOODFILL_FIXED_RANGE或者0。
-
-////    cvtColor(srcx_gray, src_gray, CV_GRAY2BGR);
-
-
-//    if(step > 0){
-//        int _step = qFloor((step - 1)/4) + 1;
-//        Mat MaskArray[_step];
-//        Mat result(src_gray.rows, src_gray.cols, CV_8UC3, Scalar(0,0,0));
-//        for(int i = 0; i < _step; i ++){
-//            Mat maskImage(src_gray.rows + 2, src_gray.cols + 2, CV_8UC1, Scalar(0));
-//            maskImage(Range(2,src_gray.rows),Range(2,src_gray.cols)) = dst;
-//            PickPoint *p = pickPointArray[i * 4];
-//            int x = src_gray.cols * (p->x() + p->width()/2) / this->width();
-//            int y = src_gray.rows * (p->y() + p->height()/2) / this->height();
-//            if(x > 0 && y > 0){
-//                Rect ccomp;
-//                floodFill(src_gray,maskImage, Point(x,y),Scalar(0,255,0),&ccomp, Scalar(25,25,25), Scalar(25,25,25), flags);
-//                MaskArray[i] = maskImage;
-//            }
-//        }
-
-//        vector<Mat> channels;
-//        split(result,channels);//分离色彩通道
-//        Mat imageBlueChannel = channels.at(0);
-//        Mat imageGreenChannel = channels.at(1);
-//        Mat imageRedChannel = channels.at(2);
-
-////        merge(channels,srcImage4);
-
-//        for(int i = 0; i < _step; i ++){
-//            Color c = paintColor[i];
-//            Mat grayChannel = MaskArray[i](Range(2, MaskArray[i].cols), Range(2, MaskArray[i].rows));
-//            imageBlueChannel += c.b * grayChannel;
-//            imageGreenChannel += c.g * grayChannel;
-//            imageRedChannel += c.r * grayChannel;
-//        }
-
-//        merge(channels, result);
-
-////        imwrite(folder_path + "FloodFill.png",result);
-
-//        cv::Mat result_Contours(src_gray.size(),CV_8U,cv::Scalar(255));
-
-//        for(int i = 0;i < _step;i ++){
-//            vector<vector<Point>> contours;
-//            Mat grayChannel = MaskArray[i](Range(2, MaskArray[i].cols), Range(2, MaskArray[i].rows));
-//            findContours(grayChannel,
-//                             contours, // a vector of contours
-//                             CV_RETR_EXTERNAL, // retrieve the external contours
-//                             CV_CHAIN_APPROX_NONE); // retrieve all pixels of each contours
-
-//            // Print contours' length
-//            qDebug() << "Contours: " << contours.size();
-//            std::vector<std::vector<cv::Point>>::const_iterator itContours= contours.begin();
-//            for ( ; itContours!=contours.end(); ++itContours)
-//            {
-//                qDebug()<< "Size: " << itContours->size();
-//            }
-
-//            //draw black contours on white image
-//            cv::drawContours(result_Contours,contours,
-//                             -1, // draw all contours
-//                             cv::Scalar(0), // in black
-//                             1); // with a thickness of 2
-//        }
-
-
-//        imshow("result_Contours",result_Contours);
-//        imwrite(folder_path + "Contours.png",result_Contours);
-////            Mat dst_bgr;
-////            cvtColor(maskImage, dst_bgr, CV_GRAY2BGR);
-
-//            std::vector<std::vector<cv::Point>> contours;
-//            cv::findContours(maskImage,
-//                             contours, // a vector of contours
-//                             CV_RETR_EXTERNAL, // retrieve the external contours
-//                             CV_CHAIN_APPROX_NONE); // retrieve all pixels of each contours
-
-//            // Print contours' length
-//            qDebug() << "Contours: " << contours.size();
-//            std::vector<std::vector<cv::Point>>::const_iterator itContours= contours.begin();
-//            for ( ; itContours!=contours.end(); ++itContours)
-//            {
-//                qDebug()<< "Size: " << itContours->size();
-//            }
-
-
-//            // draw black contours on white image
-//            cv::Mat result(maskImage.size(),CV_8U,cv::Scalar(255));
-//            cv::drawContours(result,contours,
-//                             -1, // draw all contours
-//                             cv::Scalar(0), // in black
-//                             2); // with a thickness of 2
-
-
-//    }
-/*******************************/
-
 //    QImage img = cvMat2QImage(src_gray);
 
     QImage img = cvMat2QImage(src_gray);
@@ -2107,7 +1655,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     indexofImg ++;
     qDebug()<<"_________________________finished__________________________";
-    if(indexofImg <= 9)
+    if(indexofImg < 9)
         update();
 
 //    cv::waitKey(0);
