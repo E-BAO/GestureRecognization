@@ -3,10 +3,9 @@
 
 #include "renderarea.h"
 #include "pickpoint.h"
+#include "training.h"
 
 #include <QWidget>
-#include <vector>
-#include <deque>
 
 #define JOINTS_NUMBER 21
 
@@ -54,33 +53,4 @@ protected:
     void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
 };
 
-void thinningIteration(cv::Mat& img, int iter);
-
-void thinning(const cv::Mat& src, cv::Mat& dst);
-
-void Erosion( int, void* );
-
-bool findNextPoint(vector<Point> &_neighbor_points, Mat &_image, Point _inpoint, int flag, Point& _outpoint, int &_outflag);
-
-bool findFirstPoint(Mat &_inputimg, Point &_outputpoint);
-
-void findLines(Mat &inputimg, vector<deque<Point>> &_outputlines);
-
-Scalar random_color(RNG& _rng);
-
-void Refine(Mat& image);
-
-void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc, vector<Point2f> &norm1,vector<Point2f> &norm2, int r);
-
-bool findTjunction(Mat &img, Point cenPt, vector<Point> &neighbor_points);
-
-void findEnd(Mat &img, Point centerPoint, Point2f &vecDir);
-
-void InitMat(Mat& m,float* num);
-
-void RemoveSmallRegion(Mat& Src, Mat& Dst, int AreaLimit, int CheckMode, int NeihborMode);
-
-bool findXPoint(Mat &img, Point point0,Point2f vecDir,Point &crossPt);
-
-int findFarPoint(vector<Point> &_neighbor_points, Mat &_image, Point _inpoint, Point& _outpoint, int &count);
 #endif // RENDERWIDGET_H

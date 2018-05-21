@@ -9,7 +9,9 @@
 #include <QBrush>
 #include <QColor>
 #include <QMouseEvent>
+#include <string>
 
+using namespace std;
 
 class RenderArea : public QWidget
 {
