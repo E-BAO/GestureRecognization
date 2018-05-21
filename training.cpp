@@ -1,5 +1,7 @@
 #include "training.h"
 
+#include <QFile>
+
 int indexofImg = 1;
 
 //随机取色 用于画线的时候
@@ -465,10 +467,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     vector<Point> crossPoints;
     for(int i = 0; i < Tjunc.size();i++){
         Point TjuncPoint = Tjunc[i];
-        Point2f normVec = norm1[i];
+        Point2f normVec1 = norm1[i];
         Point2f normVec2 = norm2[i];
         Point crossPt2;
-        Point crossPt;
+        Point crossPt1;
 
 //        qDebug("point %d,%d ",TjuncPoint.x,TjuncPoint.y);
 
@@ -478,8 +480,35 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 //        };
 
-        if(findXPoint(thin_inv,TjuncPoint,normVec,crossPt)){
-            int mindist = (crossPt - TjuncPoint).dot(crossPt - TjuncPoint);
+        int mindist1 = 100000,mindist2 = 100000;
+        int foundcross = 0;
+        if(findXPoint(thin_inv,TjuncPoint,normVec1,crossPt1)){
+            mindist1 = (crossPt1 - TjuncPoint).dot(crossPt1 - TjuncPoint);
+            foundcross = 1;
+        }
+
+        if(findXPoint(thin_inv,TjuncPoint,normVec2,crossPt2)){
+            mindist2 = (crossPt2 - TjuncPoint).dot(crossPt2 - TjuncPoint);
+            foundcross = 1;
+        }
+
+
+        if(foundcross){
+
+            int mindist;
+            Point2f normVec;
+            Point crossPt;
+
+            if(mindist1 < mindist2){
+                mindist = mindist1;
+                normVec = normVec1;
+                crossPt = crossPt1;
+            }else{
+                mindist = mindist2;
+                normVec = normVec2;
+                crossPt = crossPt2;
+            }
+
             Point this_point = crossPt;
             int this_flag = 0;
             Point next_point = this_point;
@@ -1356,7 +1385,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             int found = 0;
             double aadist = dist01 * 0.3 + dist12 * 0.3 + adist * 0.4;
 
-            if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.5){  //adjust
+            if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.3){  //adjust
                 qDebug("match");
                 Point root = *(fingerLines[i].end() - 1);
                 for(int j = fingerJointsIdx[i][2] + int(aadist/2); j < fingerLines[i].size();j++){
@@ -1385,7 +1414,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 //                    bonelenth.push_back(aadist);
                     finger_roots.push_back(root);
                 }
-            }else if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.7){  //adjust
+            }else if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.5){  //adjust
                 qDebug("over match");
                 Point root = *(fingerLines[i].end() - 1);
                 root = *(fingerLines[i].end() - 1);
@@ -1436,24 +1465,42 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     }
 
     imwrite(folder_path + "finger_img.png",finger_img);
+
     output_img = finger_img;
 
-    /***************************************/
+    QString filepath = QString::fromStdString(folder_path) + "parameters.txt";
+    QFile f(filepath);
+    if(!f.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        qDebug() << "Open failed.";
+        return;
+    }
+    QTextStream txtOutput(&f);
 
-//    QImage img = cvMat2QImage(src_gray);
+    txtOutput << fingerLines.size() << "\t\n";
+    txtOutput << center.x<<"\t"<<center.y<< "\t\n";
 
-//    QImage img = cvMat2QImage(src_gray);
+    for(int i = 0; i < fingerLines.size();i ++){
+        deque<Point> fingerLine = fingerLines[i];
+        qDebug() << "fingerLine"<<i<<"size = "<<fingerLine.size();
 
-//    QPainter painter(this);
-//    painter.drawImage(QRect(0, 0, width(), height()), img);
-//    painter.end();
+        for(int j = 0;j < fingerLine.size(); j++){
+            Point pt = fingerLine[j];
+            int x = pt.x;
+            int y = pt.y;
+            txtOutput << x << "\t" << y << "\t";
+        }
+        txtOutput <<"\n";
+    }
 
-//    indexofImg ++;
-//    qDebug()<<"_________________________finished__________________________";
-//    if(indexofImg < 9)
-//        update();
+    for(int i = 0; i < fingerJointsIdx.size();i ++){
+        vector<int> JointsIdx = fingerJointsIdx[i];
+        for(int j = 0;j < JointsIdx.size(); j++){
+            int idx = JointsIdx[j];
+            txtOutput << idx << "\t";
+        }
+        txtOutput <<"\n";
+    }
 
-//    cv::waitKey(0);
-
-//    emit changed();
+    f.close();
 }

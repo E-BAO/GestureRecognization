@@ -46,7 +46,7 @@ signals:
 
 public slots:
     void setCannyPara(int);
-    void readFile();
+    void readFile(QString filename, vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center);
     void writeFile();
 
 protected:
