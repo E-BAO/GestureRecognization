@@ -7,6 +7,7 @@
 #include <QList>
 #include <QDebug>
 #include <deque>
+#include <QApplication>
 
 using namespace std;
 
@@ -16,8 +17,6 @@ struct color{
     float b,g,r;
     color(float blue,float green, float red):b(blue),g(green),r(red){}
 };
-
-string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture1/";
 
 //BGR
 Color c_black(0, 0, 0);
@@ -219,11 +218,20 @@ double compared (const void * a, const void * b)
   return ( *(double*)a - *(double*)b );
 }
 
+//QStringList arguments = QCoreApplication::arguments();
+////QString str = arguments.at(0);
+int indexofImg = 9;
+string folder_path;
+
 void RenderWidget::paintEvent(QPaintEvent * /* event */)
 {
+    qDebug()<<"image gesture"<<indexofImg;
+    string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
     Scalar color;
     RNG rng(12345);
+
+    vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
 
 //    float tmpAngle = CV_PI/4.0;
 //    qDebug("sin(PI/6 30 = %f)",sin(CV_PI/6.0));
@@ -273,11 +281,11 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     imwrite(folder_path + "bw_inv.png", bw_inv);
 
     //remove small hole and cross
-    RemoveSmallRegion(bw_inv, bw_inv, 40, 0, 1);
-    RemoveSmallRegion(bw_inv, bw_inv, 40, 0, 0);
+    RemoveSmallRegion(bw_inv, bw_inv, 80, 0, 1);
+    RemoveSmallRegion(bw_inv, bw_inv, 80, 0, 0);
 
-    RemoveSmallRegion(bw_inv, bw_inv, 40, 1, 1);
-    RemoveSmallRegion(bw_inv, bw_inv, 40, 1, 0);
+    RemoveSmallRegion(bw_inv, bw_inv, 80, 1, 1);
+    RemoveSmallRegion(bw_inv, bw_inv, 80, 1, 0);
 
 //    imshow("RemoveSmallRegion", bw_inv);
     imwrite(folder_path + "bw_RemoveHole.png",bw_inv);
@@ -297,6 +305,12 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 //    RemoveSmallRegion(bw, bw, 20, 1, 1);
 //    RemoveSmallRegion(bw, bw, 20, 1, 0);
 //    imshow("bw", bw);
+
+
+    Mat thin = bw_inv.clone();//src_gray_inv_bw.clone();
+    thinning(thin, thin);
+
+    imwrite(folder_path + "thin.png",thin);
 
     int dilation_type = MORPH_RECT;
     int dilation_size = 1;
@@ -359,10 +373,6 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     /*************** change to imread  ************/
 
-    Mat thin = bw_inv.clone();//src_gray_inv_bw.clone();
-    thinning(thin, thin);
-
-    imwrite(folder_path + "thin.png",thin);
 
 //    Mat thin = imread(folder_path + "thin.png",0);
     /*************** change to imread end ************/
@@ -509,7 +519,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     cv::circle(draw_handcontours, center, maxdist * 1.67, cv::Scalar(255),1,CV_AA);// adjusted
     cv::circle(draw_handcontours, center, 2, cv::Scalar(255),1,CV_AA);// adjusted
 
-    imwrite(folder_path + "draw_handcontours.png",draw_handcontours);
+    imwrite(folder_path + "draw_center.png",draw_handcontours);
 
 
     vector<vector<Point>> contours2;
@@ -594,10 +604,11 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     Mat g_srcImage2;
     g_srcImage2 = thin.clone();
     vector<Point> Tjunc;
-    vector<Point2f> norm;
+    vector<Point2f> norm1;
+    vector<Point2f> norm2;
     Mat thinRemoveT = thin.clone();
-    TJunctionDetect(thinRemoveT, corners,Tjunc,norm,14); //this r should be adjusted by the whole size of the image
-//    qDebug("junc.size = %d",Tjunc.size());
+    TJunctionDetect(thinRemoveT, corners,Tjunc,norm1,norm2,14); //this r should be adjusted by the whole size of the image
+    qDebug("junc.size = %d",Tjunc.size());
     imwrite(folder_path + "thinRemoveT.png",thinRemoveT);
 
     for (int i = 0; i < Tjunc.size(); i++)
@@ -631,6 +642,105 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 //    imshow("thin_inv",mm);
 
     thin_inv -= handContours;
+
+    imwrite(folder_path + "thin_bone_before.png",thin_inv);
+
+    rectangle(thin_inv,Point(0,0),Point(thin_inv.cols - 1,thin_inv.rows - 1),Scalar(0),1);
+
+    for(int i = 0; i < thin_inv.cols; i ++){
+        Point tmpPt1(i,1);
+        Point tmpPt2(i,thin_inv.rows - 2);
+        if(thin_inv.at<uchar>(tmpPt1) != 0){
+            thin_inv.at<uchar>(tmpPt1) = 0;
+            Point this_point = tmpPt1;
+            int this_flag = 0;
+            Point next_point = this_point;
+            int next_flag;
+            while (findNextPoint(neighbor_points, thin_inv, this_point, this_flag, next_point, next_flag)){
+
+                thin_inv.at<uchar>(this_point) = 255;
+                thin_inv.at<uchar>(next_point) = 255;
+                if(findTjunction(thin_inv,next_point,neighbor_points)){
+                    thin_inv.at<uchar>(this_point) = 128;
+                    break;
+                }
+                thin_inv.at<uchar>(this_point) = 0;
+                thin_inv.at<uchar>(next_point) = 0;
+                this_point = next_point;
+                this_flag = next_flag;
+                thin_inv.at<uchar>(this_point) = 0;
+            }
+        }
+
+        if(thin_inv.at<uchar>(tmpPt2) != 0){
+            thin_inv.at<uchar>(tmpPt2) = 0;
+            Point this_point = tmpPt2;
+            int this_flag = 0;
+            Point next_point = this_point;
+            int next_flag;
+            while (findNextPoint(neighbor_points, thin_inv, this_point, this_flag, next_point, next_flag)){
+                thin_inv.at<uchar>(this_point) = 255;
+                thin_inv.at<uchar>(next_point) = 255;
+                if(findTjunction(thin_inv,next_point,neighbor_points)){
+                    thin_inv.at<uchar>(this_point) = 128;
+                    break;
+                }
+                thin_inv.at<uchar>(this_point) = 0;
+                thin_inv.at<uchar>(next_point) = 0;
+                this_point = next_point;
+                this_flag = next_flag;
+                thin_inv.at<uchar>(this_point) = 0;
+            }
+        }
+    }
+
+    for(int j = 0;j < thin_inv.rows;j ++){
+        Point tmpPt1(1,j);
+        Point tmpPt2(thin_inv.cols - 2,j);
+        if(thin_inv.at<uchar>(tmpPt1) != 0){
+            thin_inv.at<uchar>(tmpPt1) = 0;
+            Point this_point = tmpPt1;
+            int this_flag = 0;
+            Point next_point = this_point;
+            int next_flag;
+            while (findNextPoint(neighbor_points, thin_inv, this_point, this_flag, next_point, next_flag)){
+                thin_inv.at<uchar>(this_point) = 255;
+                thin_inv.at<uchar>(next_point) = 255;
+                if(findTjunction(thin_inv,next_point,neighbor_points)){
+                    thin_inv.at<uchar>(this_point) = 128;
+                    break;
+                }
+                thin_inv.at<uchar>(this_point) = 0;
+                thin_inv.at<uchar>(next_point) = 0;
+                this_point = next_point;
+                this_flag = next_flag;
+                thin_inv.at<uchar>(this_point) = 0;
+            }
+        }
+
+        if(thin_inv.at<uchar>(tmpPt2) != 0){
+            thin_inv.at<uchar>(tmpPt2) = 0;
+            Point this_point = tmpPt2;
+            int this_flag = 0;
+            Point next_point = this_point;
+            int next_flag;
+            while (findNextPoint(neighbor_points, thin_inv, this_point, this_flag, next_point, next_flag)){
+                thin_inv.at<uchar>(this_point) = 255;
+                thin_inv.at<uchar>(next_point) = 255;
+                if(findTjunction(thin_inv,next_point,neighbor_points)){
+                    thin_inv.at<uchar>(this_point) = 128;
+                    break;
+                }
+                thin_inv.at<uchar>(this_point) = 0;
+                thin_inv.at<uchar>(next_point) = 0;
+                this_point = next_point;
+                this_flag = next_flag;
+                thin_inv.at<uchar>(this_point) = 0;
+            }
+        }
+    }
+
+
     imwrite(folder_path + "thin_bone.png",thin_inv);
 
 //    Mat thin_inv = imread(folder_path + "thin_inv.png",0);
@@ -642,23 +752,70 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     vector<Point> crossPoints;
     for(int i = 0; i < Tjunc.size();i++){
         Point TjuncPoint = Tjunc[i];
-        Point2f normVec = norm[i];
+        Point2f normVec = norm1[i];
+        Point2f normVec2 = norm2[i];
+        Point crossPt2;
         Point crossPt;
+
+//        qDebug("point %d,%d ",TjuncPoint.x,TjuncPoint.y);
+
+        Mat findCross_img = thin_inv.clone();
+
+//        if(findXPoint(thin_inv,TjuncPoint,normVec2,crossPt2)){
+
+//        };
+
         if(findXPoint(thin_inv,TjuncPoint,normVec,crossPt)){
+            int mindist = (crossPt - TjuncPoint).dot(crossPt - TjuncPoint);
+            Point this_point = crossPt;
+            int this_flag = 0;
+            Point next_point = this_point;
+            int next_flag;
+            int ccount = 0;
+            Point tmpcrossPt = crossPt;
+            while (findNextPoint(neighbor_points, findCross_img, this_point, this_flag, next_point, next_flag)){
+                int curdist = (next_point - TjuncPoint).dot(next_point - TjuncPoint);
+                this_point = next_point;
+                this_flag = next_flag;
+                if(curdist < mindist){
+                    mindist = curdist;
+                    tmpcrossPt = this_point;
+                }else
+                    break;
+                if(ccount ++ > 3)
+                    break;
+            }
+            ccount = 0;
+            this_point = crossPt;
+            while (findNextPoint(neighbor_points, findCross_img, this_point, this_flag, next_point, next_flag)){
+                int curdist = (next_point - TjuncPoint).dot(next_point - TjuncPoint);
+                this_point = next_point;
+                this_flag = next_flag;
+                if(curdist < mindist){
+                    mindist = curdist;
+                    tmpcrossPt = this_point;
+                }else
+                    break;
+                if(ccount ++ > 3)
+                    break;
+            }
+            crossPt = tmpcrossPt;
             crossPoints.push_back(crossPt);
 
             line(imgJoints,TjuncPoint,crossPt,Scalar(255,255,255));
-            circle(imgJoints, TjuncPoint, 2, Scalar(0,255,0), -1, 8, 0);
-            circle(imgJoints, crossPt, 2, Scalar(0,0,255), -1, 8, 0);
+//            imgJoints.at<uchar>(TjuncPoint) = Scalar(0,255,0)
+            circle(imgJoints, TjuncPoint, 1, Scalar(0,255,0), -1, 8, 0);
+            circle(imgJoints, crossPt, 1, Scalar(0,0,255), -1, 8, 0);
         }
-        else
+        else{
             qDebug("error: point %d,%d found no cross",TjuncPoint.x,TjuncPoint.y);
+            circle(imgJoints, TjuncPoint, 3, Scalar(255,128,0), 1, 8, 0);
+        }
     }
 
     qDebug("%d joints found",crossPoints.size());
 
     /********** find wrast *********/
-    vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
 
     Mat thin_inv_moveT = thin_inv.clone();
 
@@ -714,7 +871,12 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
 
     vector<deque<Point>> lines;
+    vector<deque<Point>> lines_ori;
+
+//    imwrite(folder_path + "thin_bone.png",thin_inv);
+
     findLines(thin_inv, lines);
+    lines_ori = lines;
 
     /*********** delete short lines *************/
 
@@ -841,6 +1003,32 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     merge(channels,draw_img);
     imwrite(folder_path + "draw_img.png",draw_img);
 
+
+    Mat draw_img_all = Mat(src.rows, src.cols, CV_8UC3, Scalar(0,0,0));
+    Mat draw_img_gray_all = Mat(src.rows, src.cols, CV_8UC1, Scalar(0));
+
+    for (int i = 0; i < lines_ori.size(); i++)
+    {
+        color = Scalar( rng.uniform(50, 255), rng.uniform(50,255), rng.uniform(50,255) );
+        for (int j = 0; j < lines_ori[i].size(); j++)
+        {
+            draw_img_all.at<Vec3b>(lines_ori[i][j]) = Vec3b(color[0], color[1], color[2]);
+            draw_img_gray_all.at<uchar>(lines_ori[i][j]) = 255;
+        }
+    }
+
+//    vector<Mat> channels;
+    split(draw_img_all,channels);//分离色彩通道
+    imageBlueChannel = channels.at(0);
+    imageGreenChannel = channels.at(1);
+    imageRedChannel = channels.at(2);
+
+    imageBlueChannel += thin;
+    imageGreenChannel += thin;
+    imageRedChannel += thin;
+
+    merge(channels,draw_img_all);
+    imwrite(folder_path + "draw_img_all.png",draw_img_all);
     /*******************************/
 
 
@@ -849,7 +1037,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     Mat largeCircle(draw_img_gray.rows, draw_img_gray.cols,CV_8UC1, Scalar(0));
     Mat midCircle(draw_img_gray.rows, draw_img_gray.cols,CV_8UC1, Scalar(0));
 
-    float threshold1 = 1.6, threshold2 = 1.0;
+    float threshold1 = 1.6, threshold2 = 1.05;
 
     int x1,y1,d1,r1,x2,y2,d2,r2;
     r1 = maxdist * threshold1;
@@ -937,55 +1125,23 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 
     x = x1,y = y1,d1 = 1-r1;
 
+    vector<Point> valid_Points_bc;
     while(x <= y){
         vector<Point> circle_points = {Point(x,y),Point(y,x),Point(y,-x),Point(x,-y),Point(-x,-y),Point(-y,-x),Point(-y,x),Point(-x,y)};
         for(int i = 0; i < circle_points.size(); i++){
-            largeCircle_b.at<uchar>(center + circle_points[i]) = 128;
-
-            if(largeCircle.at<uchar>(center + circle_points[i]) == 255){
-                largeCircle.at<uchar>(center + circle_points[i]) = 0;
-                //deep search
-                Point this_point = center + circle_points[i];
-                Point next_point;
-                int counti;
-                int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
-
-//                qDebug("counti ===== %d",counti);
-                //                if(counti < 2){
-                finger_ends.push_back(next_point);
-                //                cv::circle(finger_ends_image, next_point, 2, cv::Scalar(255),-1,CV_AA);// adjusted
-
-                this_point = center + circle_points[i];
-                for(int ii = 0; ii < neighbor_points.size(); ii++){
-                    Point tmppt = this_point + neighbor_points[ii];
-                    if(midCircle.at<uchar>(tmppt) == 255){
-                        findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
-                    }
-                }
-                //                }
+            Point tmpPoint = center + circle_points[i];
+            largeCircle_b.at<uchar>(tmpPoint) = 128;
+            if(largeCircle.at<uchar>(tmpPoint) == 255){
+                valid_Points_bc.push_back(tmpPoint);
             }else{
-                for(int i = 0;i < neighbor_points.size(); i ++){
-                    Point tmpPoint = center + circle_points[i] + neighbor_points[i];
-                    if(largeCircle.at<uchar>(tmpPoint) == 255){
-                        Point this_point = tmpPoint;
-                        Point next_point;
-                        int counti;
-                        int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
-//                        qDebug("counti ===== %d",counti);
-
-//                        if(counti < 3){
-                            finger_ends.push_back(next_point);
-                            this_point = tmpPoint;
-                            findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
-                            break;
-//                        }
+                for(int j = 0;j < neighbor_points.size(); j ++){
+                    Point ttmpPoint = tmpPoint + neighbor_points[j];
+                    if(largeCircle.at<uchar>(ttmpPoint) == 255){
+                        valid_Points_bc.push_back(tmpPoint);
                     }
                 }
             }
-
         }
-
-
         if(d1 < 0){
             d1 += 2*x + 3;
         }else{
@@ -993,6 +1149,70 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
             y --;
         }
         x ++;
+    }
+
+    for(int i = 0; i < valid_Points_bc.size(); i ++){
+//        vector<Point> circle_points = {Point(x,y),Point(y,x),Point(y,-x),Point(x,-y),Point(-x,-y),Point(-y,-x),Point(-y,x),Point(-x,y)};
+//        for(int i = 0; i < circle_points.size(); i++){
+
+        Point tmpPoint = valid_Points_bc[i];
+
+            if(largeCircle.at<uchar>(tmpPoint) == 255){
+                largeCircle.at<uchar>(tmpPoint) = 0;
+                //deep search
+                Point this_point = tmpPoint;//center + circle_points[i];
+                Point next_point;
+                int counti;
+                int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
+
+//                qDebug("counti ===== %d",counti);
+                //                if(counti < 2){
+                finger_ends.push_back(next_point);
+//                cv::circle(finger_ends_image, next_point, 10, cv::Scalar(255),-1,CV_AA);// adjusted
+
+                this_point = tmpPoint;//center + circle_points[i];
+                for(int ii = 0; ii < neighbor_points.size(); ii++){
+                    Point tmppt = this_point + neighbor_points[ii];
+                    if(midCircle.at<uchar>(tmppt) == 255){
+                        midCircle.at<uchar>(tmppt) = 0;
+                        findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+                    }
+                }
+                //                }
+            }else{
+//                Point this_point = tmpPoint;
+//                Point next_point;
+//                int counti;
+//                findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+//                break;
+                for(int j = 0;j < neighbor_points.size(); j ++){
+                    Point ttmpPoint = tmpPoint + neighbor_points[j];
+                    if(largeCircle.at<uchar>(ttmpPoint) == 255){
+                        largeCircle.at<uchar>(ttmpPoint) = 0;
+                        Point this_point = ttmpPoint;
+                        Point next_point;
+                        int counti;
+                        int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
+//                        qDebug("counti ===== %d",counti);
+
+//                        if(counti < 3){
+//                        cv::circle(finger_ends_image, next_point, 10, cv::Scalar(255),-1,CV_AA);// adjusted
+                        finger_ends.push_back(next_point);
+
+                        break;
+//                        }
+                    }
+                }
+                Point this_point = tmpPoint;
+                Point next_point;
+                int counti;
+                findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+            }
+
+//        }
+
+
+
     }
 
     Mat midCircle_b = midCircle.clone();
@@ -1015,6 +1235,18 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
                 finger_ends.push_back(next_point);
 //                cv::circle(finger_ends_image, next_point, 2, cv::Scalar(255),-1,CV_AA);// adjusted
 
+            }else{
+                for(int j = 0;j < neighbor_points.size(); j ++){
+                    Point ttmpPoint = center + circle_points[i] + neighbor_points[j];
+                    if(midCircle.at<uchar>(ttmpPoint) == 255){
+                        Point this_point = ttmpPoint;
+                        Point next_point;
+                        int counti;
+                        int dist = findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+
+                        finger_ends.push_back(next_point);
+                }
+            }
             }
         }
 
@@ -1152,7 +1384,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
         }
 //        finger_ends = pts;
 //        qDebug("rank = %f,%f",end_dist[0],end_dist[pts.size() - 1]);
-//        qDebug("fingerends.sze === %d",finger_ends.size());
+        qDebug("fingerends.sze === %d",finger_ends.size());
     }
 
     imwrite(folder_path + "largeCircle.png",largeCircle);
@@ -1165,10 +1397,19 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     /***************** find line and joints **********************/
 //    vector<Point> fingerEnds_onLine[lines.size()];
 
-    vector<Point> points_onlines[lines.size()];
-    vector<int> points_ol_idx[lines.size()];
+    vector<vector<Point>> points_onlines;
+    vector<vector<int>> points_ol_idx;
+
+    for(int i = 0; i < lines.size(); i ++){
+        vector<Point> pts;
+        vector<int> idxs;
+        points_onlines.push_back(pts);
+        points_ol_idx.push_back(idxs);
+    }
 
     Mat finger_img = thin.clone();
+
+    int fingerends_ol_idx[finger_ends.size()];
 
     for(int i = 0; i < finger_ends.size(); i++){
         Point pt = finger_ends[i];
@@ -1178,38 +1419,97 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
             for(int k = 0; k < 2;k++){
                 Point p = pp[k];
                 if(p == pt){
-                    if(points_onlines[j].size() != 0)
-                        qDebug("error: found 2 ends on 1 line");
-                    points_onlines[j].push_back(p);
-                    points_ol_idx[j].push_back(0);
                     found = 1;
-                    if(k == 1)
-                        reverse(lines[j].begin(),lines[j].end());
-                    break;
                 }else{
                     for(int ii = 0;ii < neighbor_points.size(); ii ++){
                         Point tmppoint = pt + neighbor_points[ii];
                         if(p == tmppoint){
-                            if(points_onlines[j].size() != 0)
-                                qDebug("error: found 2 ends on 1 line");
-                            points_onlines[j].push_back(p);
-                            points_ol_idx[j].push_back(0);
                             found = 1;
-                            if(k == 1)
-                                reverse(lines[j].begin(),lines[j].end());
                             break;
                         }
                     }
                 }
-                if(found)
+                if(found){
+                    if(points_onlines[j].size() != 0){
+                        qDebug("error: found %d ends on 1 line",points_onlines[j].size() + 1);
+                        int halfIdx = lines[j].size() / 2;
+                        deque<Point> halfline1(lines[j].begin(),lines[j].begin() + halfIdx - 1);
+                        deque<Point> halfline2(lines[j].begin() + halfIdx + 1,lines[j].end());
+                        lines[j] = halfline1;
+                        if(k == 1){
+                            reverse(halfline2.begin(),halfline2.end());
+                        }else{
+                            qDebug()<<"error: 2 ends not on the end";
+                        }
+                        lines.push_back(halfline2);
+                        vector<Point> pts;
+                        vector<int> inds;
+                        pts.push_back(p);
+                        inds.push_back(0);
+                        points_onlines.push_back(pts);
+                        points_ol_idx.push_back(inds);
+                        qDebug()<<"lines = "<<lines.size()\
+                            <<"points online = "<<points_onlines.size()\
+                           <<"points_ol_idx = "<<points_ol_idx.size();
+                        break;
+                    }
+                    points_onlines[j].push_back(p);
+                    points_ol_idx[j].push_back(0);
+                    if(k == 1)
+                        reverse(lines[j].begin(),lines[j].end());
                     break;
+                }
             }
-            if(found)
+            if(found){
+                fingerends_ol_idx[i] = j;
                 break;
+            }
         }
     }
 
+
+    //        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() > 3){
+    //            int halfIdx = fingerLines[i].size() / 2;
+    //            deque<Point> tmpLine(fingerLines[i].begin(), fingerLines[i].begin() + halfIdx);
+    //            fingerLines[i] = tmpLine;
+    //            int j = 0;
+    //            for(; j < fingerJointsIdx.size();j ++){
+    //                if(fingerJointsIdx[i][j] > halfIdx)
+    //                    break;
+    //            }
+    //            vector<int> tmpJoints(fingerJointsIdx[i].begin(), fingerJointsIdx[i].begin() + j);
+    //            fingerJointsIdx[i] = tmpJoints;
+    //            vector<Point> tmpPoints(fingerJoints[i].begin(), fingerJoints[i].begin() + j);
+    //            fingerJoints[i] = tmpPoints;
+    //            qDebug("now %d_______  fingerJoints = %d",i,fingerJoints[i].size());
+    //        }
+
+//    for(int i = 0; i < finger_ends.size(); i ++){
+//        qDebug()<<"fingerends_line idx = "<<fingerends_ol_idx[i];
+//        for(int j = 0; j < i; j ++){
+//            if(fingerends_ol_idx[i] == fingerends_ol_idx[j]){
+//                int idx = fingerends_ol_idx[i];
+//                int halfIdx = lines[idx].size() / 2;
+//                deque<Point> tmpLine1(lines[i].begin(), lines[i].begin() + halfIdx);
+//                lines[i] = tmpLine1;
+//                vector<Point> tmpPoints(points_onlines[i].begin(),points_onlines[i].begin() + 1);
+//                points_onlines = tmpPoints;
+
+//                deque<Point> tmpLine2(lines[i].begin() + halfIdx, lines[i].end());
+//                reverse(tmpLine2.begin(),tmpLine2.end());
+
+//                lines.push_back(tmpLine2);
+//                int j = 0;
+//                for(; j < fingerJointsIdx.size();j ++){
+//                    if(fingerJointsIdx[i][j] > halfIdx)
+//                        break;
+//                }
+//            }
+//        }
+//    }
+
     Point fakeEnds(-1, -1);
+
     for(int i = 0; i < crossPoints.size(); i++){
         Point pt = crossPoints[i];
         int found = 0;
@@ -1219,7 +1519,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
                 if(p == pt){
                     if(points_onlines[j].size() == 0){
                         points_onlines[j].push_back(fakeEnds);
-                        points_ol_idx[j].push_back(0);
+                        points_ol_idx[j].push_back(-1);
                     }
                     points_onlines[j].push_back(p);
                     points_ol_idx[j].push_back(k);
@@ -1231,7 +1531,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
                         if(p == tmppoint){
                             if(points_onlines[j].size() == 0){
                                 points_onlines[j].push_back(fakeEnds);
-                                points_ol_idx[j].push_back(0);
+                                points_ol_idx[j].push_back(-1);
                             }
                             points_onlines[j].push_back(p);
                             points_ol_idx[j].push_back(k);
@@ -1253,21 +1553,324 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     vector<vector<int>> fingerJointsIdx;
 
     for(int i = 0; i < lines.size(); i ++){
-        if(points_onlines[i].size() > 0){
+        if(points_ol_idx[i].size() > 0){
             fingerLines.push_back(lines[i]);
             fingerJoints.push_back(points_onlines[i]);
             fingerJointsIdx.push_back(points_ol_idx[i]);
         }
     }
 
+    qDebug()<<"valid fingers = "<<fingerJoints.size();
+
+
+//    for(int i = 0; i < bonelenth.size(); i ++){
+//        qDebug("bonelenth %d = %d",i,bonelenth[i]);
+//    }
+
     /************* find finger root *********/
 
 //    Mat mmm = finger_img.clone();
 
+    
+    for(int i = 0; i < fingerJointsIdx.size(); i ++){
+        vector<int> Idx_i = fingerJointsIdx[i];
+        qDebug()<<"fingerJointsIdx = "<<i;
+        for(int j = 0; j < Idx_i.size(); j ++){
+            int tmpidx = Idx_i[j];
+            qDebug()<<" idx = "<<tmpidx;
+
+            for(int k = 0; k < j; k++){
+                if(tmpidx < Idx_i[k]){
+                    Idx_i[j] = Idx_i[k];
+                    Idx_i[k] = tmpidx;
+                    Point pp = fingerJoints[i][j];
+                    fingerJoints[i][j] = fingerJoints[i][k];
+                    fingerJoints[i][k] = pp;
+                    int ii = fingerJointsIdx[i][j];
+                    fingerJointsIdx[i][j] = fingerJointsIdx[i][k];
+                    fingerJointsIdx[i][k] = ii;
+                    break;
+                }
+            }
+        }
+    }
+
+    /************* general joint len *********/
+    vector<int> bonelenth;
+
+    Mat bonelenth_img = src.clone();
+
+    for(int i = 0; i < fingerJointsIdx.size(); i ++){
+        vector<int> Idx_i = fingerJointsIdx[i];
+        for(int j = 0; j < Idx_i.size() - 1; j ++){
+            int tmpI = Idx_i[j];
+            if(tmpI == -1)
+                continue;
+            int nextI = Idx_i[j + 1];
+            qDebug()<<"i ="<<i<<"tmpI = "<<tmpI<<"nextI ="<<nextI;
+
+            Point pp = (fingerLines[i][tmpI] - fingerLines[i][nextI]);
+            int len = int(sqrt(pp.dot(pp)));
+            color = random_color(rng);
+            cv::line(bonelenth_img, fingerLines[i][tmpI],fingerLines[i][nextI], color,1,CV_AA);
+            qDebug("bonelenth %d = %d",bonelenth.size(), len);
+
+            bonelenth.push_back(len);
+        }
+    }
+
+    sort(bonelenth.begin(),bonelenth.end(),less<int>()); //increase
+
+    imwrite(folder_path + "bonelenth.png",bonelenth_img);
+
+    int refer_len = bonelenth[bonelenth.size() / 2];
+
+    double len_threshold = 0.2;
+    vector<Point> finger_roots;
+    int maxCount = 0;
+    int maxIdx = 0;
+    int maxSum = 0;
+    for(int i = 0; i < bonelenth.size();i ++){
+        int curlen = bonelenth[i];
+        int count = 1;
+        int sum = curlen;
+//        vector<int> cur_valid_len;
+        for(int j = 0; j < bonelenth.size(); j ++){
+            if(i == j)
+                continue;
+            int dist = abs(curlen - bonelenth[j]);
+            if(dist < curlen * len_threshold){
+                count ++;
+                sum += bonelenth[j];
+            }
+        }
+//        qDebug("bonelenth [%d]  = %d, count = %d",i,bonelenth[i],count);
+        if(count > maxCount){
+            maxCount = count;
+            maxIdx = i;
+            maxSum = sum;
+        }
+    }
+
+    double adist = (double)maxSum / (double)maxCount;
+    qDebug("avr bonelenth = %f",adist);
+
+    qDebug()<<"fingerJoints.size ="<<fingerJoints.size();
+
     for(int i = 0; i < fingerJoints.size(); i ++){
+
+        Mat jjj = thin_inv.clone();
+        if(fingerJoints[i][0] == fakeEnds)
+            cv::circle(jjj, fingerJoints[i][1],5, cv::Scalar(225),1,CV_AA);// adjusted
+        else
+            cv::circle(jjj, fingerJoints[i][0],5, cv::Scalar(225),1,CV_AA);// adjusted
+        char ic = '0' + i;
+        imwrite(folder_path + "jjj"+ic+".png",jjj);
+
+        qDebug("finger %d_______  fingerJoints = %d",i,fingerJoints[i].size());
+
+        if(fingerJoints[i][0] == fakeEnds && fingerJoints[i].size() > 1){
+            qDebug("hhahahahahhaha");
+            Point strPt = fingerLines[i][0];
+            Point endPt = fingerLines[i][fingerLines[i].size() - 1];
+            Point pt1 = fingerJoints[i][1];
+            double dist01 = sqrt((strPt - pt1).dot(strPt - pt1));
+            double dist13 = sqrt((endPt - pt1).dot(endPt - pt1));
+            int foundend = 0;
+            if(fabs(dist01 - adist) < adist * 0.4f){
+                qDebug("nonononono");
+
+
+                foundend = 1;
+            }
+            if(fabs(dist13 - adist) < adist * 0.4f){
+                qDebug("yeyeyeyeyey");
+                foundend += 2;
+            }
+
+            switch(foundend){
+
+            case 1:// only start
+                fingerJoints[i][0] = strPt;
+                fingerJointsIdx[i][0] = 0;
+
+            case 2://only end
+                fingerJoints[i].push_back(endPt);
+                fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+
+                reverse(fingerJoints[i].begin(),fingerJoints[i].end());
+                reverse(fingerJointsIdx[i].begin(),fingerJointsIdx[i].end());
+                qDebug()<<"fakeend .x"<<fingerJoints[i][fingerJoints[i].size() -1].x;
+
+                fingerJoints[i].pop_back();
+                fingerJointsIdx[i].pop_back();
+
+            case 3://both
+                double distc1 = sqrt((strPt - center).dot(strPt - center));
+                double distc2 = sqrt((endPt - center).dot(endPt - center));
+                if(distc2 < distc1){
+                    qDebug("rrererererere");
+                    fingerJoints[i].push_back(endPt);
+                    fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+
+                    reverse(fingerJoints[i].begin(),fingerJoints[i].end());
+                    reverse(fingerJointsIdx[i].begin(),fingerJointsIdx[i].end());
+
+                    fingerJoints[i].pop_back();
+                    fingerJointsIdx[i].pop_back();
+                }else{
+                    fingerJoints[i][0] = strPt;
+                    fingerJointsIdx[i][0] = 0;
+                }
+                qDebug()<<"fakeendddd .x"<<fingerJoints[i][fingerJoints[i].size() -1].x;
+
+            }
+
+        }
+
+        if(fingerJoints[i][0] == fakeEnds && fingerJoints[i].size() > 2){
+            Point strPt = fingerLines[i][0];
+            Point endPt = fingerLines[i][fingerLines[i].size() - 1];
+            Point pt1 = fingerJoints[i][1], pt2 = fingerJoints[i][2];
+            double dist12 = sqrt((pt2 - pt1).dot(pt2 - pt1));
+            double dist01 = sqrt((strPt - pt1).dot(strPt - pt1));
+            double dist23 = sqrt((endPt - pt2).dot(endPt - pt2));
+            int foundend = 0;
+            if(fabs(dist01 - dist12) < adist * 0.2f){
+                fingerJoints[i][0] = strPt;
+                fingerJointsIdx[i][0] = 0;
+                foundend = 1;
+            }
+            if(fabs(dist23 - dist12) < adist * 0.2f){
+                fingerJoints[i].push_back(endPt);
+                fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+                foundend += 2;
+            }
+
+            switch(foundend){
+
+            case 1:// only start
+
+            case 2://only end
+                reverse(fingerJoints[i].begin(),fingerJoints[i].end());
+                reverse(fingerJointsIdx[i].begin(),fingerJointsIdx[i].end());
+                qDebug()<<"fakeend .x"<<fingerJoints[i][fingerJoints[i].size() -1].x;
+
+                fingerJoints[i].pop_back();
+                fingerJointsIdx[i].pop_back();
+
+            case 3://both
+                double distc1 = sqrt((strPt - center).dot(strPt - center));
+                double distc2 = sqrt((endPt - center).dot(endPt - center));
+                if(distc2 < distc1){
+                    reverse(fingerJoints[i].begin(),fingerJoints[i].end());
+                    reverse(fingerJointsIdx[i].begin(),fingerJointsIdx[i].end());
+                }
+            }
+        }
+
+
+        //        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() > 3){
+//            int halfIdx = fingerLines[i].size() / 2;
+//            deque<Point> tmpLine(fingerLines[i].begin(), fingerLines[i].begin() + halfIdx);
+//            fingerLines[i] = tmpLine;
+//            int j = 0;
+//            for(; j < fingerJointsIdx.size();j ++){
+//                if(fingerJointsIdx[i][j] > halfIdx)
+//                    break;
+//            }
+//            vector<int> tmpJoints(fingerJointsIdx[i].begin(), fingerJointsIdx[i].begin() + j);
+//            fingerJointsIdx[i] = tmpJoints;
+//            vector<Point> tmpPoints(fingerJoints[i].begin(), fingerJoints[i].begin() + j);
+//            fingerJoints[i] = tmpPoints;
+//            qDebug("now %d_______  fingerJoints = %d",i,fingerJoints[i].size());
+//        }
+
+        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 1){
+            qDebug("finger 1 found!");
+            Point end = fingerJoints[i][0];
+            int endIdx = fingerJointsIdx[i][0];
+            Point pt1 = *(fingerLines[i].end() - 1);
+            int found = 0;
+            for(int j = fingerJointsIdx[i][0] + int(adist - 1); j < fingerLines[i].size();j++){
+                pt1 = fingerLines[i][j];
+                double ddist = sqrt((end - pt1).dot(end - pt1));
+                if(fabs(ddist - adist) < adist * 0.2f){
+                    found = 1;
+                    fingerJoints[i].push_back(pt1);
+                    fingerJointsIdx[i].push_back(j);
+                    break;
+                }
+            }
+            if(!found){
+                qDebug("pt1 not found!!!!");
+                pt1 = *(fingerLines[i].end() - 1);
+                int idx1 = fingerLines[i].size();
+                double ddist = sqrt((pt1 - end).dot(pt1 - end));
+                if(fabs(ddist - adist) < adist * 0.2f && fabs(idx1 - endIdx)){
+                    found = 1;
+                    fingerJoints[i].push_back(pt1);
+                    fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+                }
+            }
+            if(found){
+                qDebug("pt1 found!!!!");
+                cv::circle(finger_img, pt1,3, cv::Scalar(128),1,CV_AA);// adjusted
+//                    bonelenth.push_back(adist);
+//                    finger_roots.push_back(root);
+            }
+        }
+
+        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 2){
+            qDebug("finger 2 found!");
+            Point end = fingerJoints[i][0], pt1 = fingerJoints[i][1];
+            double dist1 = sqrt((end - pt1).dot(end - pt1));
+            double aadist = (adist + dist1) * 0.5;
+
+            if(fabs(dist1 - adist) < adist * 0.2){
+                Point pt2 = *(fingerLines[i].end() - 1);
+                int found = 0;
+                for(int j = fingerJointsIdx[i][1] + int(adist - 1); j < fingerLines[i].size();j++){
+                    pt2 = fingerLines[i][j];
+                    double ddist = sqrt((pt1 - pt2).dot(pt1 - pt2));
+                    if(fabs(ddist - aadist) < aadist * 0.2f){
+                        found = 1;
+                        fingerJoints[i].push_back(pt2);
+                        fingerJointsIdx[i].push_back(j);
+                        break;
+                    }
+                }
+                if(!found){
+                    qDebug("pt2 not found!!!!");
+                    pt2 = *(fingerLines[i].end() - 1);
+                    double ddist = sqrt((pt2 - pt1).dot(pt2 - pt1));
+                    if(fabs(ddist - aadist) < aadist * 0.2f){
+                        found = 1;
+                        fingerJoints[i].push_back(pt2);
+                        fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+                    }
+                }
+                if(found){
+                    qDebug("pt2 found!!!!");
+                    cv::circle(finger_img, pt2,8, cv::Scalar(128),1,CV_AA);// adjusted
+//                    bonelenth.push_back(aadist);
+//                    finger_roots.push_back(root);
+                }
+            }else if(fabs(dist1 - 2 * adist) < adist * 0.3){
+                int idx0 = fingerJointsIdx[i][0], idx2 = fingerJointsIdx[i][1];
+                int idx1 = (idx0 + idx2)/2;
+                Point pt1 = fingerLines[i][idx1];
+                fingerJoints[i].insert(fingerJoints[i].begin() + 1, fingerLines[i][idx1]);
+                fingerJointsIdx[i].insert(fingerJointsIdx[i].begin() + 1,idx1);
+                cv::circle(finger_img,pt1 ,8, cv::Scalar(128),1,CV_AA);// adjusted
+            }
+        }
+
         // 3 found
         if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 3){
+            qDebug("finger 3 found!");
             Point end = fingerJoints[i][0], pt1 = fingerJoints[i][1], pt2 = fingerJoints[i][2];
+
             double dist1 = sqrt((end - pt1).dot(end - pt1));
             double dist2 = sqrt((end - pt2).dot(end - pt2));
             if(dist2 < dist1){
@@ -1280,35 +1883,63 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
             double dist01 = dist1;
             double dist12 = sqrt((pt2 - pt1).dot(pt2 - pt1));
             int found = 0;
-            if(fabs(dist01 - dist12) < dist12 * 0.2){  //adjust
-                double adist = (dist01 + dist12)  * 0.5;
+            double aadist = dist01 * 0.3 + dist12 * 0.3 + adist * 0.4;
+
+            if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.5){  //adjust
+                qDebug("match");
                 Point root = *(fingerLines[i].end() - 1);
-                for(int j = fingerJointsIdx[i][2] + int(adist * 0.5); j < fingerLines[i].size();j++){
+//                cv::circle(finger_img, root,20, cv::Scalar(128),1,CV_AA);// adjusted
+
+                qDebug()<<"index here = "<<fingerJointsIdx[i][2] + int(aadist/2)<<"line size ="<<fingerLines[i].size();
+
+                for(int j = fingerJointsIdx[i][2] + int(aadist/2); j < fingerLines[i].size();j++){
                     root = fingerLines[i][j];
                     double ddist = sqrt((pt2 - root).dot(pt2 - root));
-                    if(fabs(ddist - adist) < 1.0f){
+                    if(fabs(ddist - aadist) < 1.0f){
                         found = 1;
-                        qDebug("root found!!!!");
                         fingerJoints[i].push_back(root);
                         fingerJointsIdx[i].push_back(j);
-                        cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
                         break;
                     }
                 }
                 if(!found){
+                    qDebug("root not found!!!!");
                     root = *(fingerLines[i].end() - 1);
                     double ddist = sqrt((pt2 - root).dot(pt2 - root));
-                    if(fabs(ddist - adist) < adist * 0.2f){
+                    if(fabs(ddist - adist) < adist * 0.4f){
                         found = 1;
-                        qDebug("root found!!!!");
                         fingerJoints[i].push_back(root);
                         fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
-                        cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
                     }
+                }
+                if(found){
+                    qDebug("root found!!!!");
+                    cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
+//                    bonelenth.push_back(aadist);
+                    finger_roots.push_back(root);
+                }
+            }else if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.7){  //adjust
+                qDebug("over match");
+                Point root = *(fingerLines[i].end() - 1);
+                root = *(fingerLines[i].end() - 1);
+                double ddist = sqrt((pt2 - root).dot(pt2 - root));
+                if(fabs(ddist - adist) < adist * 0.2f){
+                    found = 1;
+                    fingerJoints[i].push_back(root);
+                    fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+                    finger_roots.push_back(root);
+                    cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
+                    qDebug("root found!!!!");
                 }
             }
         }
     }
+
+//    for(int i = 0; i < fingerJoints.size(); i ++){
+
+
+//    }
+
 
 //    for(int i = 0; i < lines.size(); i ++){
 //        vector<Point> points_online;
@@ -1383,18 +2014,41 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
 //        }
 //    }
 
-    for(int i = 0;i < fingerLines.size();i++){
+    for(int i = 0; i < fingerLines.size(); i ++){
         for(int j = 0; j < fingerLines[i].size(); j ++){
-            finger_img.at<uchar>(fingerLines[i][j]) = 255;
+            finger_img.at<uchar>( fingerLines[i][j]) = 255;
         }
+    }
 
-        for(int j = 0; j < fingerJointsIdx[i].size();j ++){
-            cv::circle(finger_img, fingerLines[i][fingerJointsIdx[i][j]],5, cv::Scalar(255),1,CV_AA);// adjusted
-            finger_img.at<uchar>(fingerLines[i][fingerJointsIdx[i][j]]) = 128;
+    for(int i = 0;i < fingerJoints.size();i++){
+        for(int j = 0; j < fingerJointsIdx[i].size(); j ++){
+            if( fingerJoints[i][j] == fakeEnds || fingerJointsIdx[i][j] == -1)
+                continue;
+            if(fingerJointsIdx[i][j] < 0){
+                qDebug("error: fingerJointsIdx[i][j]  == %d",fingerJointsIdx[i][j]);
+                continue;
+            }
+            if(fingerJointsIdx[i][j] >= fingerLines[i].size()){
+                qDebug("error:fingerJointsIdx[i][j] %d > fingerLines[i].size() %d",fingerJointsIdx[i][j],fingerLines[i].size());
+                continue;
+            }
+            Point tmppoint = fingerLines[i][fingerJointsIdx[i][j]];
+            if (tmppoint.x > 0 && tmppoint.y > 0 && tmppoint.x < finger_img.cols&&tmppoint.y < finger_img.rows){
+                finger_img.at<uchar>(tmppoint) = 128;
+                int size = 2 * j + 2;
+//                switch(j){
+//                    case 0:
+//                }
+
+                cv::circle(finger_img, tmppoint,size, cv::Scalar(255),1,CV_AA);// adjusted
+            }else{
+                qDebug("error: col rows = %d %d, points = %d, %d",finger_img.cols, finger_img.rows,tmppoint.x,tmppoint.y);
+            }
         }
     }
 
     imwrite(folder_path + "finger_img.png",finger_img);
+    imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre/finger_img" + to_string(indexofImg) + ".png",finger_img);
 
     /***************************************/
 
@@ -1574,6 +2228,13 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     QPainter painter(this);
     painter.drawImage(QRect(0, 0, width(), height()), img);
     painter.end();
+
+    indexofImg ++;
+    qDebug()<<"_________________________finished__________________________";
+    if(indexofImg < 9)
+//        update();
+
+    cv::waitKey(0);
 
 //    emit changed();
 }
@@ -1795,6 +2456,9 @@ int findFarPoint(vector<Point> &_neighbor_points, Mat &_image, Point _inpoint, P
     count = 0;
     int maxdist = 0;
     _outpoint = _inpoint;
+
+    _image.at<uchar>(_inpoint) = 0;
+
 
     for(int i = 0; i < _neighbor_points.size();i ++){
         Point tmppoint  = _inpoint + _neighbor_points[i];
@@ -2133,63 +2797,78 @@ vector<Point> neighbor_points5 = { Point(-2,-2),Point(-1,-2),Point(0,-2),Point(1
 
 /************** T junction detection ********************/
 
-void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,vector<Point2f> &norm, int r){
+void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc, vector<Point2f> &norm1,vector<Point2f> &norm2, int r){
 
     CV_Assert(img.channels() == 1);
     CV_Assert(img.depth() != sizeof(uchar));
     CV_Assert(img.rows > 3 && img.cols > 3);
 
-    vector<Point2f>::const_iterator itCorners = corners.begin();
+//    vector<Point2f>::const_iterator itCorners = corners.begin();
     vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
 
     vector<Point> Tjunction;
 //    vector<int> crossPtsIdx;
 
 
-    for ( ; itCorners!=corners.end(); ++itCorners)
-    {
-        bool found = false;
+    for(int i = 0; i < img.rows; i ++){
+        uchar* data = img.ptr<uchar>(i);
+        for(int j = 0; j < img.cols; ++j)
+        {
+            bool found = false;
+            Point cenPt(j, i);
 
-        Point cenPt = (*itCorners);
-        if (img.at<uchar>(cenPt) != 0){
-            if(findTjunction(img, cenPt, neighbor_points)){
-                Tjunction.push_back(cenPt);
-                found = true;
-            }
-        }
-        if (!found){
-            int rMax = 6; // 1 - 3x3 2 - 5x5 3 - 7x7 4 - 9x9
-            for(int s = 1;s <= rMax;s++){
-                vector<Point> round_points;
-                int w = 2 * s + 1;
-                int h = 2 * s - 1;
-                int curx = -s;
-                int cury = -s;
-                for(int i = 0; i < 8 * s; i++){
-                    Point tmpPt(curx, cury);
-                    round_points.push_back(tmpPt);
-                    if(i < w - 1){
-                        curx ++;
-                    }else if(i > (w + h - 1) && i < (w + h + w - 1)){
-                        curx --;
-                    }
-                    if(i > (w - 2) && i < (w + h)){
-                        cury ++;
-                    }else if(i > (w + h + w - 2)){
-                        cury --;
-                    }
+            if(data[j] != 0){
+                if(findTjunction(img, cenPt, neighbor_points)){
+                    Tjunction.push_back(cenPt);
+                    found = true;
                 }
-                for(int i = 0;i < round_points.size();i++){
-                    Point tmpPoint = cenPt + round_points[i];
-                    if(findTjunction(img, tmpPoint, neighbor_points)){
-                        Tjunction.push_back(tmpPoint);
-                        found = true;
-                        break;
-                    }
-                }
-                if(found)break;
             }
-        }
+//        }
+//    for ( ; itCorners!=corners.end(); ++itCorners)
+//    {
+//        bool found = false;
+
+//        Point cenPt = (*itCorners);
+//        if (img.at<uchar>(cenPt) != 0){
+//            if(findTjunction(img, cenPt, neighbor_points)){
+//                Tjunction.push_back(cenPt);
+//                found = true;
+//            }
+//        }
+//        if (!found){
+//            int rMax = 6; // 1 - 3x3 2 - 5x5 3 - 7x7 4 - 9x9
+//            for(int s = 1;s <= rMax;s++){
+//                vector<Point> round_points;
+//                int w = 2 * s + 1;
+//                int h = 2 * s - 1;
+//                int curx = -s;
+//                int cury = -s;
+//                for(int i = 0; i < 8 * s; i++){
+//                    Point tmpPt(curx, cury);
+//                    round_points.push_back(tmpPt);
+//                    if(i < w - 1){
+//                        curx ++;
+//                    }else if(i > (w + h - 1) && i < (w + h + w - 1)){
+//                        curx --;
+//                    }
+//                    if(i > (w - 2) && i < (w + h)){
+//                        cury ++;
+//                    }else if(i > (w + h + w - 2)){
+//                        cury --;
+//                    }
+//                }
+//                for(int i = 0;i < round_points.size();i++){
+//                    Point tmpPoint = cenPt + round_points[i];
+//                    if(findTjunction(img, tmpPoint, neighbor_points)){
+//                        Tjunction.push_back(tmpPoint);
+//                        found = true;
+//                        break;
+//                    }
+//                }
+//                if(found)break;
+//            }
+//        }
+    }
     }
 
     vector<Point>::const_iterator itTjunc = Tjunction.begin();
@@ -2207,6 +2886,8 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 
     for ( ; itTjunc!=Tjunction.end(); ++itTjunc){
 
+//        qDebug("for ( ; itTjunc!=Tjunction.end(); ++itTjunc){  %d", itTjunc - Tjunction.begin());
+
         Point center_point = (*itTjunc);
 
         imgclone1.at<uchar>(center_point) = 128;
@@ -2219,6 +2900,8 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
         if (img.at<uchar>(pp) != 0)
             last = 1;
         for(int i = 0;i < neighbor_points.size();i++){
+            // clear  qDebug("int i = 0;i < neighbor_points.size();i++");
+
             Point tmppoint = center_point + neighbor_points[i];
             if (tmppoint.x > 0 && tmppoint.y > 0 && tmppoint.x < img.cols&&tmppoint.y < img.rows){
 
@@ -2273,7 +2956,7 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 //        }
 
         if(crossPts.size() != 3 || crossPtsIdx.size() != 3){
-            qDebug("error: T junction with %d branches!",crossPts.size());
+//            qDebug("error: T junction with %d branches!",crossPts.size());
             continue;
         }
 
@@ -2284,6 +2967,8 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
         int idx;
 
         for(int i = 0; i < 3; i++){
+//            qDebug("Mat imgclone = img.clone();");
+
             // init image
 
 //            imwrite(folder_path + "imgcloneb.png",imgclone);
@@ -2310,19 +2995,26 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 
             while (findNextPoint(neighbor_points, imgclone, this_point, this_flag, next_point, next_flag))
             {
-//                lineCount[i] ++;                
+                //clear qDebug("findNextPoint(neighbor_points, imgclone, this_point");
+
+//                lineCount[i] ++;
 
                 imgclone3.at<uchar>(next_point) -= 60;
 
                 vecLine[i].push_back(next_point);
                 this_point = next_point;
                 this_flag = next_flag;
-                if(vecLine[i].size() > r )break;
+                if(vecLine[i].size() > 1 * r )break;
             }
             ///// have holes here
             ///
-            if(vecLine[i].size() > r)juncCount++;
-            if(dist <= r && vecLine[i].size() <= r)idx = i;
+//            if(vecLine[i].size() > r){
+//            }
+            if(dist <= r){
+                idx = i;
+            }else{
+                juncCount++;
+            }
         }
 
         if(juncCount == 2 ){
@@ -2381,11 +3073,17 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 
             tmp_norm /= sqrt(tmp_norm.ddot(tmp_norm));
 
-            float angle = acos(tmp_norm.ddot(norm3[0]));
-            if(angle > CV_PI/3.0){
-                tmp_norm = tmp_norm * 0.5 + norm3[0] * 0.5;
+//            float angle = acos(tmp_norm.ddot(norm3[0]));
 
-            }
+            tmp_norm /= sqrt(tmp_norm.ddot(tmp_norm));
+            norm3[0] /= sqrt(norm3[0].ddot(norm3[0]));
+            norm1.push_back(tmp_norm);
+            norm2.push_back(norm3[0]);
+
+//            if(angle > CV_PI/3.0){
+//                tmp_norm = tmp_norm * 0.5 + norm3[0] * 0.5;
+
+//            }
 
             tmp_norm /= sqrt(tmp_norm.ddot(tmp_norm));
 //            qDebug("tmp_norm pre = %f,%f",tmp_norm.x,tmp_norm.y);
@@ -2394,7 +3092,7 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 
 //            qDebug("tmp_norm after = %f,%f",tmp_norm.x,tmp_norm.y);
 
-            norm.push_back(tmp_norm);
+//            norm.push_back(tmp_norm);
             Tjunc.push_back(center_point);
 
 
@@ -2402,14 +3100,17 @@ void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc,ve
 
 
             //release the center
+//            qDebug("vecLine[idx][i] = %d",idx,0);
+
             for(int i = 1; i < vecLine[idx].size(); i++){
+//                qDebug("vecLine[idx][i] = %d,%d",vecLine[idx][i].x,vecLine[idx][i].y);
                 img.at<uchar>(vecLine[idx][i]) = 0;
             }
 
        ////// rush here
-//            RemoveSmallRegion(img,img,4,1,1);
+            RemoveSmallRegion(img,img,4,1,1);
 //            for(int i = 0; i < neighbor_points.size();i++){
-//                Point tmpPoint = (*vecLine[idx].end() + neighbor_points[i];
+//                Point tmpPoint = (*vecLine[idx].end() + neighbor_points[i]);
 //                img.at<uchar>(tmpPoint) = 0;
 //            }
 
@@ -2478,7 +3179,7 @@ void InitMat(Mat& m,float* num)
             m.at<float>(i,j)=*(num+i*m.rows+j);
 }
 
-int maxPixelLen = 20; ///////adjusted here
+int maxPixelLen = 25; ///////adjusted here
 int igPixelLen = 5;
 
 void findEnd(Mat &img, Point centerPoint, Point2f &vecDir){

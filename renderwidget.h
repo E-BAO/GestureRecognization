@@ -70,7 +70,7 @@ Scalar random_color(RNG& _rng);
 
 void Refine(Mat& image);
 
-void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc, vector<Point2f> &norm, int r);
+void TJunctionDetect(Mat &img, vector<Point2f> &corners, vector<Point> &Tjunc, vector<Point2f> &norm1,vector<Point2f> &norm2, int r);
 
 bool findTjunction(Mat &img, Point cenPt, vector<Point> &neighbor_points);
 
