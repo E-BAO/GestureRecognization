@@ -24,7 +24,8 @@ SOURCES += main.cpp\
     glwidget.cpp \
     logo.cpp \
     handframe.cpp \
-    handstructure.cpp
+    handstructure.cpp \
+    training.cpp
 
 HEADERS  += mainwindow.h \
     renderarea.h \
@@ -37,7 +38,8 @@ HEADERS  += mainwindow.h \
     glwidget.h \
     logo.h \
     handframe.h \
-    handstructure.h
+    handstructure.h \
+    training.h
 
 LIBS += -L/usr/local/Cellar/opencv3/3.2.0/lib
 
