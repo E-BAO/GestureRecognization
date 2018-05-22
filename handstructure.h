@@ -34,18 +34,27 @@ private:
         30.0
     };
 
+//    const float length[5][4] = {
+//        1.0f, 1.0f, 0.5f, 1.0f,
+//        2.0f, 0.9f, 0.9f, 0.9f,
+//        2.0f, 1.0f, 1.0f, 1.0f,
+//        2.0f, 0.9f, 0.9f, 0.9f,
+//        2.0f, 0.8f, 0.8f, 0.8f,
+//    };
+
     const float length[5][4] = {
-        1.0f, 1.0f, 0.5f, 1.0f,
-        2.0f, 0.9f, 0.9f, 0.9f,
+        0.5f, 0.5f, 0.5f, 1.0f,
         2.0f, 1.0f, 1.0f, 1.0f,
-        2.0f, 0.9f, 0.9f, 0.9f,
-        2.0f, 0.8f, 0.8f, 0.8f,
+        2.0f, 1.0f, 1.0f, 1.0f,
+        2.0f, 1.0f, 1.0f, 1.0f,
+        2.0f, 1.0f, 1.0f, 1.0f,
     };
 
     Finger* fingers[5];
     QVector2D points2D[JOINTS_NUMBER];
 
     int adist;
+    int thumbIdx;
 
 public:
     HandStructure();

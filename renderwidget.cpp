@@ -87,7 +87,7 @@ void RenderWidget::keyPressEvent(QKeyEvent *e){
 
 void RenderWidget::paintEvent(QPaintEvent * /* event */)
 {
-    int indexofImg = 1;
+    int indexofImg = 2;
 
     string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
@@ -100,7 +100,7 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     int thumbIdx;
     int adist;
     readFile(filepath, fingerlines, fingerJointsIdx,center,thumbIdx,adist);
-////    qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx;
+//    qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx;
 
     fitSkeleton(fingerlines, fingerJointsIdx,center,thumbIdx,adist);
 

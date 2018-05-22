@@ -115,3 +115,7 @@ void calPlane(QVector3D v1, QVector3D v2, QVector3D point,float* plane){
     plane[2] = n.z();
     plane[3] = QVector3D::dotProduct(n,point);
 }
+
+void calInterLine(QVector3D v1, QVector3D v2,QVector3D &v3){
+    v3 = QVector3D::crossProduct(v1,v2);
+}

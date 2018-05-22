@@ -24,7 +24,7 @@ HandStructure::HandStructure()
     CalPoints();
 
 
-    int indexofImg = 1;
+    int indexofImg = 9;
 
     string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
@@ -34,7 +34,6 @@ HandStructure::HandStructure()
     vector<vector<int>> fingerJointsIdx;
 
     Point center;
-    int thumbIdx;
     readFile(filepath, fingerlines, fingerJointsIdx,center,thumbIdx,adist);
     qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx<<"adist = "<<adist;
 
@@ -130,6 +129,17 @@ void HandStructure::fitSkeleton(vector<deque<Point> > &fingerlines, vector<vecto
 
     int count = 0;
     for(int i = 0; i < 5; i ++){
+        if(i > fingerlines.size() -  1){
+            for(int j = 0;j < 4; j ++){
+                Point pp = fakePoint;
+                QVector2D *p = &points2D[5 + count * 4 + j];
+                p->setX(pp.x);
+                p->setY(pp.y);
+            }
+            count ++;
+            continue;
+        }
+
         if(i == thumbIdx)
             continue;
 
@@ -266,7 +276,7 @@ void HandStructure::CalGesture()
 
     Finger *finger = fingers[0];
     QVector2D vec2 = points2D[1] - points2D[0];
-    float length3D = finger->length[0];
+    float length3D = fingers[2]->length[2];
 //    float scale = length3D / vec2.length();
     float scale = length3D / adist;
 
@@ -277,6 +287,7 @@ void HandStructure::CalGesture()
 //    float z;
 //    float temp;// = sqrtf(pow(finger->length[0],2) - pow(vec2.length(),2));
 
+    qDebug()<<"cal gesture";
     QVector2D fakepoint(-1,-1);
 
     int count = 0;
@@ -299,6 +310,9 @@ void HandStructure::CalGesture()
     points_mat->data.fl[2] = joints[0][0].z();
 
 
+    QVector3D validRoot3D[count];
+
+    int counti = 1;
     for(int i = 1;i < 5;i ++){
         finger = fingers[i];
         QVector2D point = points2D[1 + i * 4];
@@ -310,9 +324,10 @@ void HandStructure::CalGesture()
         float temp = pow(finger->length[0],2) - pow(vec2.length(),2);
         float z = temp > 0 ? sqrtf(temp):0;
         QVector3D vec3 = joints[i][0] + QVector3D(vec2.x(),vec2.y(),z);
-        points_mat->data.fl[i*3+0] = vec3.x();//矩阵的值进行初始化   X的坐标值
-        points_mat->data.fl[i * 3 + 1] = vec3.y();//  Y的坐标值
-        points_mat->data.fl[i * 3 + 2] = vec3.z();
+        points_mat->data.fl[counti*3+0] = vec3.x();//矩阵的值进行初始化   X的坐标值
+        points_mat->data.fl[counti * 3 + 1] = vec3.y();//  Y的坐标值
+        points_mat->data.fl[counti * 3 + 2] = vec3.z();
+        counti ++;
     }
 
     float plane12[4] = { 0 };//定义用来储存平面参数的数组
@@ -325,56 +340,118 @@ void HandStructure::CalGesture()
     QVector3D n_vec(plane12[0],plane12[1],plane12[2]);
 
     //four finger
-    for(int i = 1;i < 5;i ++){
+    counti = 0;
+    for(int n = 0;n < 5;n ++){
+//        if(n == thumbIdx)
+//            continue;
+        int i = counti ++;
         finger = fingers[i];
-        QVector2D point = points2D[1 + i * 4];
-        if(point == fakepoint)
-            continue;
-        vec2 = point - points2D[0];
-        vec2 *= scale;
-        float z = plane12[3] - plane12[0] * vec2.x() - plane12[1] * vec2.y();
-        z /= plane12[2];
-        QVector3D vec3(vec2.x(),vec2.y(),z);
-        joints[i][1] = joints[i][0] + vec3;
+        QVector2D point = points2D[1 + n * 4];
         float plane[4] = { 0 };
-        calPlane(vec3,n_vec,joints[i][1],plane);
+
+        if(point != fakepoint){
+            QVector2D vec2 = point - points2D[0];
+            vec2 *= scale;
+            float z = plane12[3] - plane12[0] * vec2.x() - plane12[1] * vec2.y();
+            z /= plane12[2];
+            QVector3D vec3 = QVector3D(vec2.x(),vec2.y(),z);
+            joints[i][1] = joints[i][0] + vec3;
+//            qDebug()<<"hahhahah"<<joints[i][0] .x()<<joints[i][0] .y()<<vec3.x()<<vec3.y();
+            calPlane(joints[i][1],n_vec,vec3,plane);
+
+//            vec3 = joints[i][1] - joints[i][0];
+//            vec2 = QVector2D(vec3.x(),vec3.y());
+//            vec2 /= scale;
+//            QVector2D rePoint = vec2 + points2D[0];
+//            qDebug()<<"repoint = "<<rePoint.x()<<rePoint.y()<<"init point ="<<point.x()<<point.y();
+
+        }else{
+//            continue;
+            qDebug()<<"finger "<<i<<"= fakeend";
+            QVector3D root_dir;
+            int found = 0;
+            for(int j = 1;j <= 3; j ++){
+                QVector2D pointlast = points2D[n * 4 + j];
+                QVector2D pointnext = points2D[n * 4 + j + 1];
+                if(pointlast == fakepoint || pointnext == fakepoint){
+                    continue;
+                }else{
+                    found = 1;
+                    QVector2D vec2 = pointnext - pointlast;
+                    vec2 *= scale;
+                    float temp = pow(finger->length[j],2) - pow(vec2.length(),2);
+                    float z = temp > 0 ? sqrtf(temp):0;
+                    QVector3D vec3 = QVector3D(vec2.x(),vec2.y(),z);
+                    root_dir = joints[i][0] + vec3;
+                    calPlane(root_dir,n_vec,joints[i][0],plane);
+                    qDebug()<<"cal plan here";
+//                    break;
+                }
+            }
+
+            if(! found)
+                continue;
+
+            QVector3D palm_n = n_vec;
+            QVector3D finger_n(plane[0],plane[1],plane[2]);
+            QVector3D root_vec;
+            calInterLine(palm_n,finger_n,root_vec);
+            if(QVector3D::dotProduct(root_vec,root_dir) < 0)
+                root_vec *= -1;
+
+            root_vec.normalize();
+            root_vec *= finger->length[0];
+            joints[i][1] = root_vec;
+
+
+
+            QVector3D vec3 = joints[i][1] - joints[i][0];
+            QVector2D vec2 = QVector2D(vec3.x(),vec3.y());
+            vec2 /= scale;
+            points2D[1 + n * 4] = vec2 + points2D[0];
+        }
+
+
         for(int j = 1;j < 4;j ++){
-            vec2 = points2D[1 + i * 4 + j] - points2D[i * 4 + j];
+            QVector2D vec2 = points2D[1 + i * 4 + j] - points2D[i * 4 + j];
             vec2 *= scale;
             QVector3D vec3 = joints[i][j] + QVector3D(vec2.x(),vec2.y(),0);
-            z = plane[3] - plane[0] * vec3.x() - plane[1] * vec3.y();
+            float z = plane[3] - plane[0] * vec3.x() - plane[1] * vec3.y();
             z /= plane[2];
             joints[i][j + 1] = QVector3D(vec3.x(),vec3.y(),z);
         }
+
     }
 
-    //thumb
-    CvMat *thumb_mat = cvCreateMat(3, 3, CV_32FC1);//定义用来存储需要拟合点的矩阵
+    qDebug()<<"finger ends 4 finished";
 
-    finger = fingers[0];
-    for(int j = 0; j < 4;j ++){
+//    //thumb
+//    CvMat *thumb_mat = cvCreateMat(3, 3, CV_32FC1);//定义用来存储需要拟合点的矩阵
 
-        if(points2D[j] == fakepoint)
-            continue;
+//    finger = fingers[0];
+//    for(int j = 0; j < 4;j ++){
 
-        vec2 = points2D[1 + j] - points2D[j];
-        vec2 *= scale;
-        float temp = pow(finger->length[j],2) - pow(vec2.length(),2);
-        float z = temp > 0 ? sqrtf(temp):0;
-        QVector3D vec3 = joints[0][j] + QVector3D(vec2.x(),vec2.y(),z);
-        joints[0][j + 1] = vec3;
-        thumb_mat->data.fl[j*3+0] = vec3.x();//矩阵的值进行初始化   X的坐标值
-        thumb_mat->data.fl[j * 3 + 1] = vec3.y();//  Y的坐标值
-        thumb_mat->data.fl[j * 3 + 2] = vec3.z();
-    }
-    float planethumb[4] = { 0 };//定义用来储存平面参数的数组
-    cvFitPlane(thumb_mat, planethumb);//调用方程
-    for(int j = 1; j < 4;j ++){
-        QVector3D vec3 = joints[0][j + 1];
-        float z = planethumb[3] - planethumb[0] * vec3.x() - planethumb[1] * vec3.y();
-        z /= planethumb[2];
-        joints[0][j + 1].setZ(z);
-    }
+//        if(points2D[j] == fakepoint)
+//            continue;
+
+//        vec2 = points2D[1 + j] - points2D[j];
+//        vec2 *= scale;
+//        float temp = pow(finger->length[j],2) - pow(vec2.length(),2);
+//        float z = temp > 0 ? sqrtf(temp):0;
+//        QVector3D vec3 = joints[0][j] + QVector3D(vec2.x(),vec2.y(),z);
+//        joints[0][j + 1] = vec3;
+//        thumb_mat->data.fl[j*3+0] = vec3.x();//矩阵的值进行初始化   X的坐标值
+//        thumb_mat->data.fl[j * 3 + 1] = vec3.y();//  Y的坐标值
+//        thumb_mat->data.fl[j * 3 + 2] = vec3.z();
+//    }
+//    float planethumb[4] = { 0 };//定义用来储存平面参数的数组
+//    cvFitPlane(thumb_mat, planethumb);//调用方程
+//    for(int j = 1; j < 4;j ++){
+//        QVector3D vec3 = joints[0][j + 1];
+//        float z = planethumb[3] - planethumb[0] * vec3.x() - planethumb[1] * vec3.y();
+//        z /= planethumb[2];
+//        joints[0][j + 1].setZ(z);
+//    }
 
     // normalize
     for(int i = 0;i < 5;i ++){

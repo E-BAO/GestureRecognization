@@ -18,6 +18,6 @@ Mat QImage2cvMat(QImage image);
 void cvFitPlane(const CvMat* points, float* plane);
 void calPlane(QVector3D v1, QVector3D v2, QVector3D point,float* plane);
 void pathDetector(QVector3D p0, Mat mat);
-
+void calInterLine(QVector3D v1, QVector3D v2,QVector3D &v3);
 
 #endif // FRAMEWORK_H
