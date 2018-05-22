@@ -46,8 +46,9 @@ signals:
 
 public slots:
     void setCannyPara(int);
-    void readFile(QString filename, vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center);
+    void readFile(QString filename, vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center, int &thumbIdx,int &adist);
     void writeFile();
+    void fitSkeleton(vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center, int &thumbIdx,int &adist);
 
 protected:
     void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;

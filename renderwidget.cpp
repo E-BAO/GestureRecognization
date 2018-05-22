@@ -97,8 +97,12 @@ void RenderWidget::paintEvent(QPaintEvent * /* event */)
     vector<vector<int>> fingerJointsIdx;
 
     Point center;
-    readFile(filepath, fingerlines, fingerJointsIdx,center);
-    qDebug()<<"center = "<<center.x<<center.y;
+    int thumbIdx;
+    int adist;
+    readFile(filepath, fingerlines, fingerJointsIdx,center,thumbIdx,adist);
+////    qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx;
+
+    fitSkeleton(fingerlines, fingerJointsIdx,center,thumbIdx,adist);
 
     Mat src = imread(folder_path+"gesture.jpg");
     Mat src_gray;
@@ -118,8 +122,63 @@ void RenderWidget::setCannyPara(int v){
     update();
 }
 
+void RenderWidget::fitSkeleton(vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center, int &thumbIdx,int &adist){
+    PickPoint *p0 = pickPointArray[0];
+    Point fakePoint(-1,-1);
+    int fakePointIdx = -1;
+    p0->setGeometry(center.x,center.y,p0->width(),p0->height());
+    p0->setVisible(true);
 
-void RenderWidget::readFile(QString filename,vector<deque<Point>> &fingerlines, vector<vector<int>> &fingerJointsIdx, Point &center)
+    for(int i = 0;i < fingerJointsIdx.size();i++){
+        while(fingerJointsIdx[i].size() < 4){
+            fingerJointsIdx[i].push_back(fakePointIdx);
+        }
+    }
+
+    deque<Point> fingerThumb = fingerlines[thumbIdx];
+    vector<int> fingerThumbIdx = fingerJointsIdx[thumbIdx];
+
+    for(int j = 4; j > 0;j --){
+//        qDebug()<<"line = "<<4 - j<<"idx = "<<fingerThumbIdx[4 - j];
+        PickPoint *p = pickPointArray[j];
+        Point pp;
+        if(fingerThumbIdx[4 - j] == fakePointIdx){
+            pp = fakePoint;
+        }else{
+            pp = fingerThumb[fingerThumbIdx[4 - j]];
+        }
+        p->setGeometry(pp.x,pp.y,p->width(),p->height());
+        p->setVisible(true);
+    }
+
+    int count = 0;
+    for(int i = 0; i < 5; i ++){
+        if(i == thumbIdx)
+            continue;
+
+        deque<Point> fingerLine = fingerlines[i];
+        vector<int> fingerIdx = fingerJointsIdx[i];
+        for(int j = 0;j < 4; j ++){
+
+//            qDebug()<<"line = "<<i<<"finger = "<<3 - j<<"idx = "<<fingerIdx[3 - j];
+
+            Point pp;
+            PickPoint *p = pickPointArray[5 + count * 4 + j];
+            if(fingerIdx[3 - j] == fakePointIdx)
+                pp = fakePoint;
+            else
+                pp = fingerLine[fingerIdx[3 - j]];
+
+            p->setGeometry(pp.x,pp.y,p->width(),p->height());
+            p->setVisible(true);
+        }
+        count++;
+    }
+
+}
+
+
+void RenderWidget::readFile(QString filename,vector<deque<Point>> &fingerlines, vector<vector<int>> &fingerJointsIdx, Point &center, int &thumbIdx, int &adist)
 {
     QFile f(filename);
     if(!f.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -139,7 +198,9 @@ void RenderWidget::readFile(QString filename,vector<deque<Point>> &fingerlines, 
     lst=lineStr.split('\t');
     center.x = lst[0].toInt();
     center.y = lst[1].toInt();
-//    PickPoint *p0 = pickPointArray[0];
+
+    thumbIdx = lst[2].toInt();
+    //    PickPoint *p0 = pickPointArray[0];
 //    p0->setGeometry(x,y,p0->width(),p0->height());
 //    p0->setVisible(true);
 
@@ -158,10 +219,10 @@ void RenderWidget::readFile(QString filename,vector<deque<Point>> &fingerlines, 
 //            p->setVisible(true);
         }
         fingerlines.push_back(fingerline);
-        qDebug()<<"fingerline"<<countii<<" size = "<<fingerline.size();
+//        qDebug()<<"fingerline"<<countii<<" size = "<<fingerline.size();
         countii++;
     }
-    qDebug()<<"fingerline total"<<fingerlines.size();
+//    qDebug()<<"fingerline total"<<fingerlines.size();
 
 
     countii = 0;
@@ -179,12 +240,12 @@ void RenderWidget::readFile(QString filename,vector<deque<Point>> &fingerlines, 
 //            p->setVisible(true);
         }
         fingerJointsIdx.push_back(fingerIdx);
-        qDebug()<<"fingerIdx"<<countii<<" size = "<<fingerIdx.size();
+//        qDebug()<<"fingerIdx"<<countii<<" size = "<<fingerIdx.size();
 
         countii++;
     }
 
-    qDebug()<<"fingerJointsIdx total"<<fingerJointsIdx.size();
+//    qDebug()<<"fingerJointsIdx total"<<fingerJointsIdx.size();
 
 //    step = JOINTS_NUMBER;
 

@@ -6,6 +6,10 @@
 #include <QVector3D>
 #include <QVector2D>
 #include <qmath.h>
+#include <deque>
+#include <vector>
+
+using namespace std;
 
 #define JOINTS_NUMBER 21
 
@@ -31,21 +35,25 @@ private:
     };
 
     const float length[5][4] = {
-        1.0f, 2.0f, 1.0f, 1.0f,
-        3.0f, 0.9f, 0.9f, 0.9f,
-        3.0f, 1.0f, 1.0f, 1.0f,
-        3.0f, 0.9f, 0.9f, 0.9f,
-        3.0f, 0.8f, 0.8f, 0.8f,
+        1.0f, 1.0f, 0.5f, 1.0f,
+        2.0f, 0.9f, 0.9f, 0.9f,
+        2.0f, 1.0f, 1.0f, 1.0f,
+        2.0f, 0.9f, 0.9f, 0.9f,
+        2.0f, 0.8f, 0.8f, 0.8f,
     };
 
     Finger* fingers[5];
     QVector2D points2D[JOINTS_NUMBER];
+
+    int adist;
 
 public:
     HandStructure();
     QVector3D joints[5][5];
     void CalPoints();
     void CalGesture();
+    void fitSkeleton(vector<deque<Point> > &fingerlines, vector<vector<int> > &fingerJointsIdx, Point &center, int &thumbIdx,int &adist);
+    void readFile(QString filename,vector<deque<Point>> &fingerlines, vector<vector<int>> &fingerJointsIdx, Point &center, int &thumbIdx,int &adist);
 
 signals:
     void changed();

@@ -465,7 +465,24 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     Mat imgJoints = thin.clone();
     cvtColor(imgJoints,imgJoints,CV_GRAY2BGR);
     vector<Point> crossPoints;
+    vector<int> newTjuncIdx;
     for(int i = 0; i < Tjunc.size();i++){
+        Point Junc1  = Tjunc[i];
+        int found = 0;
+        for(int j = 0; j < i; j ++){
+            Point Junc2  = Tjunc[j];
+            int dist = (Junc2 - Junc1).dot(Junc2 - Junc1);
+            if(dist < 3){
+                found = 1;
+                break;
+            }
+        }
+        if(!found)
+            newTjuncIdx.push_back(i);
+    }
+
+    for(int k = 0; k < newTjuncIdx.size();k++){
+        int i = newTjuncIdx[k];
         Point TjuncPoint = Tjunc[i];
         Point2f normVec1 = norm1[i];
         Point2f normVec2 = norm2[i];
@@ -1273,6 +1290,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     qDebug()<<"fingerJoints.size ="<<fingerJoints.size();
 
+    int thumbIdx = -1;
+
     for(int i = 0; i < fingerJoints.size(); i ++){
 
         Mat jjj = thin_inv.clone();
@@ -1429,6 +1448,26 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 }
             }
         }
+
+        if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 3){
+            Point end = fingerJoints[i][0], pt1 = fingerJoints[i][1], pt2 = fingerJoints[i][2];
+            double dist01 = sqrt((end - pt1).dot(end - pt1));
+            double dist12 = sqrt((pt2 - pt1).dot(pt2 - pt1));
+            if(fabs(dist01 - dist12) > max(dist01,dist12) * 0.4){
+                qDebug()<<"thumbIdx11111111 = "<<i;
+                thumbIdx = i;
+            }
+        }
+
+        if(fingerJoints[i][0] == fakeEnds && fingerJoints[i].size() == 2){
+            Point pt1 = fingerJoints[i][1], pt2 = fingerJoints[i][2];
+            double dist12 = sqrt((pt1 - pt2).dot(pt1 - pt2));
+            if(fabs(adist - dist12) > adist * 0.4){
+                qDebug()<<"thumbIdx222222 = "<<i;
+                thumbIdx = i;
+            }
+        }
+
     }
 
     for(int i = 0; i < fingerLines.size(); i ++){
@@ -1478,7 +1517,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     QTextStream txtOutput(&f);
 
     txtOutput << fingerLines.size() << "\t\n";
-    txtOutput << center.x<<"\t"<<center.y<< "\t\n";
+    txtOutput << center.x<<"\t"<<center.y<< "\t"<<thumbIdx<<"\t"<<(int)adist<< "\t\n";
 
     for(int i = 0; i < fingerLines.size();i ++){
         deque<Point> fingerLine = fingerLines[i];
