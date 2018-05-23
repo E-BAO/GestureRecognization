@@ -24,7 +24,10 @@ class HandStructure
 {
 private:
     QVector3D position;
-    QVector3D rotation;
+    QVector3D rotationAxis;
+    float rotationAngle;
+    QVector3D rotationAxis1;
+    float rotationAngle1;
 
     const float angle[5] = {
         -45.0,

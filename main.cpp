@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     w.show();
 
 
-//    for(int i = 1;i <= 1; i ++){
+//    for(int i = 6;i <= 6; i ++){
 //        string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(i) + "/";
 
 //        qDebug()<<"image gesture ============== "<<i;

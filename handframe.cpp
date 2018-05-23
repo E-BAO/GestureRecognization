@@ -365,7 +365,7 @@ void HandFrame::sylinder(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat
 void HandFrame::generatePoints()
 {
     qDebug()<<"generate points";
-    handStructure->CalGesture();
+//    handStructure->CalGesture();
     draw();
 }
 

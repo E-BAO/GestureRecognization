@@ -10,25 +10,6 @@
 
 using namespace std;
 
-typedef struct color Color;
-
-struct color{
-    float b,g,r;
-    color(float blue,float green, float red):b(blue),g(green),r(red){}
-};
-
-//BGR
-Color c_black(0, 0, 0);
-Color c_red(0,0,1.0);
-Color c_yellow(0,1.0,1.0);
-Color c_green(0,1.0,0);
-Color c_cyan(1.0,1.0,0);
-Color c_blue(1,0,0);
-
-Color paintColor[6] = {
-    c_black,c_red,c_yellow,c_green,c_cyan,c_blue
-};
-
 /***************/
 
 
@@ -49,6 +30,9 @@ RenderWidget::RenderWidget(QWidget *parent) : QWidget(parent)
     handCtPoint = new PickPoint(this);
     handCenter = new Point(174,238);
     handCtPoint->setGeometry(handCenter->x - handCtPoint->width()/2,handCenter->y-handCtPoint->height()/2,handCtPoint->width(),handCtPoint->height());
+
+
+    handStructure2d = new HandStructure2D();
 }
 
 QSize RenderWidget::minimumSizeHint() const
@@ -87,7 +71,7 @@ void RenderWidget::keyPressEvent(QKeyEvent *e){
 
 void RenderWidget::paintEvent(QPaintEvent * /* event */)
 {
-    int indexofImg = 2;
+    int indexofImg = 1;
 
     string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 

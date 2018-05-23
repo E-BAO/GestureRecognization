@@ -4,18 +4,13 @@
 #include "renderarea.h"
 #include "pickpoint.h"
 #include "training.h"
+#include "handstructure2d.h"
 
 #include <QWidget>
 
 #define JOINTS_NUMBER 21
 
 using namespace std;
-
-class finger
-{
-public:
-
-};
 
 class RenderWidget : public QWidget
 {
@@ -34,6 +29,8 @@ public:
     PickPoint *handCtPoint;
     Point *handCenter;
     int step;
+    HandStructure2D *handStructure2d;
+
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
     QSize sizeHint() const Q_DECL_OVERRIDE;

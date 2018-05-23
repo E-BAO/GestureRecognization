@@ -119,3 +119,18 @@ void calPlane(QVector3D v1, QVector3D v2, QVector3D point,float* plane){
 void calInterLine(QVector3D v1, QVector3D v2,QVector3D &v3){
     v3 = QVector3D::crossProduct(v1,v2);
 }
+
+int compare (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+
+int comparef (const void * a, const void * b)
+{
+    return *(float *)a > *(float *)b ? 1 : -1;
+}
+
+int compared (const void * a, const void * b)
+{
+    return *(double *)a > *(double *)b ? 1 : -1;
+}

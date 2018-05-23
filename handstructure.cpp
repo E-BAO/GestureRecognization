@@ -9,7 +9,8 @@
 HandStructure::HandStructure()
 {
     position = QVector3D(0.0f,0.0f,0.0f);
-    rotation = QVector3D(0.0f,0.0f,0.0f);
+    rotationAxis = QVector3D(1.0f,0.0f,0.0f);
+    rotationAngle = 0.0f;
 
     for(int i = 0; i < 5;i ++){
         Finger *f = new Finger;
@@ -24,28 +25,32 @@ HandStructure::HandStructure()
     CalPoints();
 
 
-    int indexofImg = 9;
+//    int indexofImg = 1;
 
-    string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
+//    string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
-    QString filepath = QString::fromStdString(folder_path) + "parameters.txt";
+//    QString filepath = QString::fromStdString(folder_path) + "parameters.txt";
 
-    vector<deque<Point>> fingerlines;
-    vector<vector<int>> fingerJointsIdx;
+//    vector<deque<Point>> fingerlines;
+//    vector<vector<int>> fingerJointsIdx;
 
-    Point center;
-    readFile(filepath, fingerlines, fingerJointsIdx,center,thumbIdx,adist);
-    qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx<<"adist = "<<adist;
+//    Point center;
+//    readFile(filepath, fingerlines, fingerJointsIdx,center,thumbIdx,adist);
+//    qDebug()<<"center = "<<center.x<<center.y<<"thumb ="<<thumbIdx<<"adist = "<<adist;
 
-    fitSkeleton(fingerlines, fingerJointsIdx,center,thumbIdx,adist);
+//    fitSkeleton(fingerlines, fingerJointsIdx,center,thumbIdx,adist);
 
-    CalGesture();
+//    CalGesture();
 }
 
 void HandStructure::CalPoints()
 {    
     qDebug()<<"cal pointshhhh";
-    QVector3D joint0(0.0f,0.0f,0.0f);
+    QVector3D joint0(0.0,0.0f,0.0f);
+
+    QMatrix4x4 out_rotate;
+    out_rotate.setToIdentity();
+    out_rotate.rotate(rotationAngle,rotationAxis);
 
     for(int i = 0;i < 5; i ++){
         joints[i][0] = joint0;
@@ -57,7 +62,7 @@ void HandStructure::CalPoints()
         QMatrix4x4 m_rotate;
         m_rotate.setToIdentity();
         m_rotate.rotate(rz0,0.0f,0.0f,1.0f);
-        QVector3D Skeleton01 = m_rotate * basic;
+        QVector3D Skeleton01 = out_rotate * m_rotate * basic;
 
         QVector3D joint1 = joint0 + Skeleton01;
 
@@ -73,7 +78,7 @@ void HandStructure::CalPoints()
 //        m_rotate.setToIdentity();
         m_rotate.rotate(rx1,1.0f,0.0f,0.0f);
         m_rotate.rotate(rz1,0.0f,0.0f,1.0f);
-        QVector3D Skeleton12 = m_rotate * basic1;
+        QVector3D Skeleton12 =  out_rotate * m_rotate * basic1;
 
         joints[i][2] = joint1 + Skeleton12;
 
@@ -81,7 +86,7 @@ void HandStructure::CalPoints()
         QVector3D basic2(0.0f,length,0.0f);
 //        m_rotate.setToIdentity();
         m_rotate.rotate(rx2,1.0f,0.0f,0.0f);
-        QVector3D Skeleton23 = m_rotate * basic2;
+        QVector3D Skeleton23 =  out_rotate * m_rotate * basic2;
 
         joints[i][2] = joint1 + Skeleton12;
 
@@ -89,7 +94,7 @@ void HandStructure::CalPoints()
         QVector3D basic3(0.0f,length,0.0f);
 //        m_rotate.setToIdentity();
         m_rotate.rotate(rx3,1.0f,0.0f,0.0f);
-        QVector3D Skeleton34 = m_rotate * basic3;
+        QVector3D Skeleton34 =  out_rotate * m_rotate * basic3;
 
         joints[i][2] = joint1 + Skeleton12;
         joints[i][3] = joints[i][2] + Skeleton23;
@@ -240,7 +245,9 @@ void HandStructure::readFile(QString filename,vector<deque<Point>> &fingerlines,
 }
 
 void HandStructure::CalGesture()
-{
+{    
+    qDebug()<<"cal gesturehhh";
+
 //    QFile f("test.txt");
 //    if(!f.open(QIODevice::ReadOnly | QIODevice::Text))
 //    {
@@ -339,6 +346,114 @@ void HandStructure::CalGesture()
     //palm normal vector
     QVector3D n_vec(plane12[0],plane12[1],plane12[2]);
 
+    counti = 0;
+    for(int n = 0;n < 5;n ++){
+//        if(n == thumbIdx)
+//            continue;
+        int i = counti ++;
+        finger = fingers[i];
+        QVector2D point = points2D[1 + n * 4];
+        float plane[4] = { 0 };
+        if(point != fakepoint && n == 3){
+            qDebug()<<"cal gesturehhhhh n = 3";
+            QVector3D initvec3 = joints[3][1] - joints[3][0];
+
+            QVector2D vec2 = point - points2D[0];
+            vec2 *= scale;
+            float z = plane12[3] - plane12[0] * vec2.x() - plane12[1] * vec2.y();
+            z /= plane12[2];
+            QVector3D vec3 = QVector3D(vec2.x(),vec2.y(),z);
+            joints[i][1] = joints[i][0] + vec3;
+
+
+            qDebug()<<"vec3 = "<<vec3.x()<<vec3.y()<<vec3.z() << "initvec3 = "<<initvec3.x()<<initvec3.y()<<initvec3.z();
+
+            float cosAngle = QVector3D::dotProduct(vec3,initvec3)/(vec3.length() * initvec3.length());
+            float radAngle = acos(cosAngle);
+            qDebug()<<"cosAngle = "<<cosAngle<<"radAngle" << radAngle;
+
+
+            rotationAxis = QVector3D::crossProduct(initvec3,vec3); //order is important
+            rotationAxis.normalize();
+
+            QVector3D positiveVec = QVector3D::crossProduct(rotationAxis,initvec3); //order is important
+            float vec3Dir = QVector3D::dotProduct(positiveVec,vec3);
+            if(vec3Dir < 0){
+                qDebug()<<"radAngle init ="<<radAngle;
+                radAngle = 2 * CV_PI - radAngle;
+            }
+            rotationAngle = radAngle/CV_PI * 180.0f;
+
+            qDebug()<<"rotationAngle = "<<rotationAngle<<"rotation axis ="<<rotationAxis.x()<<rotationAxis.y()<<rotationAxis.z();
+
+            QMatrix4x4 _m;
+            _m.setToIdentity();
+            _m.rotate(rotationAngle,rotationAxis);
+            QVector3D valVec3 = _m * initvec3;
+            valVec3.normalize();
+            vec3.normalize();
+            qDebug()<<"valVec3 = "<<valVec3.x()<<valVec3.y()<<valVec3.z()<<"vec3 fact ="<<vec3.x()<<vec3.y()<<vec3.z();
+            CalPoints();
+            QVector3D n_vec1 = n_vec;
+            QVector3D n_vec0(0.0,0.0,1.0);
+            qDebug()<<"n0 = "<<QVector3D::dotProduct(n_vec0,initvec3)<<"n1 = "<<QVector3D::dotProduct(n_vec1,vec3);
+
+            break;
+        }
+
+
+//        if(point != fakepoint && n == 4){
+//            qDebug()<<"cal gesturehhhhh n = 4";
+//            QVector3D initvec3 = joints[4][1] - joints[4][0];
+
+//            QMatrix4x4 _m;
+//            _m.setToIdentity();
+//            _m.rotate(rotationAngle,rotationAxis);
+//            QVector3D rotateVec3 = _m * initvec3;
+//            rotateVec3.normalize();
+//            initvec3.normalize();
+//            qDebug()<<" rotateVec3 ="<<rotateVec3.x()<<rotateVec3.y()<<rotateVec3.z();
+////            CalPoints();
+
+
+
+
+//            QVector2D vec2 = point - points2D[0];
+//            vec2 *= scale;
+//            float z = plane12[3] - plane12[0] * vec2.x() - plane12[1] * vec2.y();
+//            z /= plane12[2];
+//            QVector3D vec3 = QVector3D(vec2.x(),vec2.y(),z);
+//            joints[i][1] = joints[i][0] + vec3;
+
+
+//            qDebug()<<"vec3 = "<<vec3.x()<<vec3.y()<<vec3.z() << "initvec3 = "<<initvec3.x()<<initvec3.y()<<initvec3.z();
+
+//            float cosAngle = QVector3D::dotProduct(vec3,initvec3)/(vec3.length() * initvec3.length());
+//            float radAngle = acos(cosAngle);
+//            qDebug()<<"cosAngle = "<<cosAngle<<"radAngle" << radAngle;
+
+
+//            rotationAxis = QVector3D::crossProduct(initvec3,vec3); //order is important
+//            rotationAxis.normalize();
+
+//            QVector3D positiveVec = QVector3D::crossProduct(rotationAxis,initvec3); //order is important
+//            float vec3Dir = QVector3D::dotProduct(positiveVec,vec3);
+//            if(vec3Dir < 0){
+//                qDebug()<<"radAngle init ="<<radAngle;
+//                radAngle = 2 * CV_PI - radAngle;
+//            }
+//            rotationAngle = radAngle/CV_PI * 180.0f;
+
+//            qDebug()<<"rotationAngle = "<<rotationAngle<<"rotation axis ="<<rotationAxis.x()<<rotationAxis.y()<<rotationAxis.z();
+
+//            CalPoints();
+//            break;
+
+//        }
+
+    }
+
+/*
     //four finger
     counti = 0;
     for(int n = 0;n < 5;n ++){
@@ -414,6 +529,7 @@ void HandStructure::CalGesture()
 
         for(int j = 1;j < 4;j ++){
             QVector2D vec2 = points2D[1 + i * 4 + j] - points2D[i * 4 + j];
+
             vec2 *= scale;
             QVector3D vec3 = joints[i][j] + QVector3D(vec2.x(),vec2.y(),0);
             float z = plane[3] - plane[0] * vec3.x() - plane[1] * vec3.y();
@@ -472,6 +588,7 @@ void HandStructure::CalGesture()
             joints[i][j + 1].setY(-joints[i][j + 1].y());
         }
     }
+    */
 
 //    for(int i = 0;i < 5;i ++){
 //        finger = fingers[i];

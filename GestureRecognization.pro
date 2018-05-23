@@ -28,7 +28,8 @@ SOURCES += main.cpp\
     training.cpp \
     thinning.cpp \
     imgprocessing.cpp \
-    tjunctiondetect.cpp
+    tjunctiondetect.cpp \
+    handstructure2d.cpp
 
 HEADERS  += mainwindow.h \
     renderarea.h \
@@ -45,7 +46,8 @@ HEADERS  += mainwindow.h \
     training.h \
     thinning.h \
     imgprocessing.h \
-    tjunctiondetect.h
+    tjunctiondetect.h \
+    handstructure2d.h
 
 LIBS += -L/usr/local/Cellar/opencv3/3.2.0/lib
 

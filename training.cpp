@@ -11,16 +11,6 @@ Scalar random_color(RNG& _rng)
     return Scalar(icolor & 0xFF, (icolor >> 8) & 0xFF, (icolor >> 16) & 0xFF);
 }
 
-int compare (const void * a, const void * b)
-{
-  return ( *(int*)a - *(int*)b );
-}
-
-double compared (const void * a, const void * b)
-{
-  return ( *(double*)a - *(double*)b );
-}
-
 void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 {
 //    qDebug()<<"image gesture"<<indexofImg;
@@ -618,7 +608,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             line_lenth[i] = lines[i].size();
         }
         qsort(line_lenth, lines.size(),sizeof(int),compare);
-        float threshold = line_lenth[2] * 0.3;
+        float threshold = line_lenth[2] * 0.1;
         for(int i = 0; i < lines.size(); i ++){
             if(lines[i].size() < threshold){
                 lines.erase(lines.begin() + i);
@@ -878,8 +868,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 int dist = findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
 
                 finger_ends.push_back(next_point);
-//                cv::circle(finger_ends_image, next_point, 2, cv::Scalar(255),-1,CV_AA);// adjusted
-
+                cv::circle(finger_ends_image, next_point, 2, cv::Scalar(255),-1,CV_AA);// adjusted
             }else{
                 for(int j = 0;j < neighbor_points.size(); j ++){
                     Point ttmpPoint = center + circle_points[i] + neighbor_points[j];
@@ -888,7 +877,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         Point next_point;
                         int counti;
                         int dist = findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
-
                         finger_ends.push_back(next_point);
                 }
             }
@@ -1053,6 +1041,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             if(dd >= end_dist[idx]){
                 cv::circle(finger_ends_image, pts[i], 2, cv::Scalar(255),1,CV_AA);// adjusted
                 finger_ends.push_back(pts[i]);
+                Mat imgggg = thin_inv.clone();
+                cv::circle(imgggg, pts[i], 5, cv::Scalar(255),1,CV_AA);// adjusted
+                char ic = '0' + finger_ends.size() - 1;
+                imwrite(folder_path + "fingerEndsTop"+ic+".png",imgggg);
             }
         }
 //        finger_ends = pts;
@@ -1137,6 +1129,9 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 fingerends_ol_idx[i] = j;
                 break;
             }
+        }
+        if(!found){
+            qDebug()<<i<<"nnnnnot found";
         }
     }
 
