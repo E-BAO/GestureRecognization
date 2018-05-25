@@ -28,7 +28,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     Mat src_gray;
     cvtColor(src, src_gray,CV_RGB2GRAY);
 
-    /// Reduce noise with a kernel 3x3
+    /// Reduce noise with a kernel 5x5
+
+//    cv::blur(src_gray,src_gray,Size(3,3));
+//    imwrite(folder_path + "src_gray_blur.png",src_gray);
 
     Mat src_gray_inv = Mat(src_gray.rows, src_gray.cols, CV_8UC1,255) - src_gray;
 
@@ -90,9 +93,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 // for trainning !!!!!
 
-//    cv::blur(bw_inv,bw_inv,Size(3,3));
-//    threshold(bw_inv, bw_inv, 128, 255, CV_THRESH_BINARY);
-//    imwrite(folder_path + "bw_inv_blur3.png",bw_inv);
 
     Mat thin = bw_inv.clone();//src_gray_inv_bw.clone();
 
@@ -213,9 +213,14 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     imwrite(folder_path + "contoursMaskimg.png",maskImage);
 
+
+    cv::blur(bw_inv,bw_inv,Size(3,3));
+    threshold(bw_inv, bw_inv, 128, 255, CV_THRESH_BINARY);
+    imwrite(folder_path + "bw_inv_blur3.png",bw_inv);
+
     Mat thinMaskImage(dst.rows + 2, dst.cols + 2, CV_8UC1, Scalar(0));
     thinMaskImage(Range(1,thin.rows + 1),Range(1,thin.cols + 1)) = thin;
-    floodFill(thin,thinMaskImage,Point(0,0),Scalar(128,128,128),&ccomp, Scalar(25,25,25), Scalar(25,25,25),flags);
+    floodFill(bw_inv,thinMaskImage,Point(0,0),Scalar(128,128,128),&ccomp, Scalar(25,25,25), Scalar(25,25,25),flags);
     Mat handContours(dst.rows + 2, dst.cols + 2, CV_8UC1, Scalar(0));
     handContours = thinMaskImage(Range(1,thin.rows + 1),Range(1,thin.cols + 1));
 //    Mat black_Contours(handContours.rows, handContours.cols, CV_8UC1, Scalar(255));
@@ -677,7 +682,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             line_lenth[i] = lines[i].size();
         }
         qsort(line_lenth, lines.size(),sizeof(int),compare);
-        float threshold = line_lenth[2] * 0.3;
+        float threshold = line_lenth[2] * 0.1;
         for(int i = 0; i < lines.size(); i ++){
             if(lines[i].size() < threshold){
                 lines.erase(lines.begin() + i);
@@ -1008,6 +1013,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 //    qDebug("finger_lines_far.siez = %d",finger_lines_far.size());
 
+    Mat mmmm = draw_img.clone();
     for(int i = 0;i < finger_lines_far.size(); i ++){
         deque<Point> line = finger_lines_far[i];
         if(line.size() < 10)
@@ -1033,17 +1039,37 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 finger_ends.push_back(pt2);
             }
         }else{
-            if(distfromcenter1 > r1){
-                if(distfromcenter1 > distfromcenter2)
-                    finger_ends.push_back(pt1);
+            if(distfromcenter1 > distfromcenter2){
+                if(distfromcenter1 > r1){
+                    int duplicate = 0;
+                    for(int m = 0; m < finger_ends_good.size();m ++){
+                        if(pt2 == finger_ends_good[m]){
+                            duplicate = 1;
+                            break;
+                        }
+                    }
+                    if(! duplicate)
+                        finger_ends.push_back(pt1);
+                }
+            }else if(distfromcenter1 < distfromcenter2){
+                if(distfromcenter2 > r1){
+                    int duplicate = 0;
+                    for(int m = 0; m < finger_ends_good.size();m ++){
+                        if(pt1 == finger_ends_good[m]){
+                            duplicate = 1;
+                            break;
+                        }
+                    }
+                    if(!duplicate)
+                        finger_ends.push_back(pt2);
+                }
             }
-            if(distfromcenter2 > r1){
-                if(distfromcenter1 < distfromcenter2)
-                    finger_ends.push_back(pt2);
-            }
+            if(finger_ends.size() > 0)
+                circle(mmmm,*(finger_ends.end() - 1),5,Scalar(225),1);
         }
     }
 
+    imwrite(folder_path + "finger_ends_short.png",mmmm);
     qDebug()<<"finger_ends.size  hhh" <<finger_ends.size();
 
     vector<Point> no_repu_ends;

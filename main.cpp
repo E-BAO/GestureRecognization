@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 
-    for(int i = 4;i <= 10; i ++){
+    for(int i = 13;i <= 13; i ++){
         string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(i) + "/";
 
         qDebug()<<"image gesture ============== "<<i;
