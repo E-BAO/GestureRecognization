@@ -25,7 +25,7 @@ Color paintColor[6] = {
 HandStructure2D::HandStructure2D()
 {
 
-    indexofImg = 4;
+    indexofImg = 22;
 
     folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
@@ -62,14 +62,84 @@ HandStructure2D::HandStructure2D()
 
 void HandStructure2D::sortFingers(){
     qDebug()<<"------------sortFingers------------";
+
+    if(thumbIdx >= 0 && thumbIdx < fingerlines.size()){
+
+    }else{
+
+        float fingerAngle[5];
+        //    qDebug()<<"before sort";
+
+        for(int i = 0;i < 5; i ++){
+            Finger2D *f = fingers[i];
+            fingerAngle[i] = f->Dof[0];
+            //        qDebug()<<"finger "<<i<<"="<<f->Dof[0];
+        }
+
+        qsort(fingerAngle, 5,sizeof(float),comparef);  //from big to small
+        qDebug()<<fingerAngle[0]<<fingerAngle[1]<<fingerAngle[2]<<fingerAngle[3]<<fingerAngle[4];
+
+        Finger2D *tmpFingers[5];
+        for(int i = 0;i < 5; i ++){
+            for(int j = 0; j < 5; j ++){
+                Finger2D *f = fingers[j];
+                float value = f->Dof[0];
+                if(fabs(value - fingerAngle[i]) < 1e-6){
+                    tmpFingers[i] = f;
+                    qDebug()<<"finger "<<j;
+                    break;
+                }
+            }
+        }
+
+        float fingerDofSum[5];
+        int maxDofIdx = 0;
+        float maxDofSum = 0.0;
+        for(int i = 0; i < 5; i ++){
+            fingerDofSum[i] = 0.0;
+
+            for(int j = 0;j < 5; j ++){
+                if(i == j)
+                    continue;
+
+                float tmpDof = fabs(tmpFingers[j]->Dof[0] - tmpFingers[i]->Dof[0]);
+                if(tmpDof > CV_PI)
+                    tmpDof = 2 * CV_PI - tmpDof;
+                fingerDofSum[i] += tmpDof;
+            }
+            if(fingerDofSum[i] > maxDofSum){
+                maxDofSum = fingerDofSum[i];
+                maxDofIdx = i;
+            }
+        }
+
+
+        if(maxDofIdx != 0){
+            qDebug()<<"exchange finger 0 "<<maxDofIdx;
+            Finger2D *tmpF = tmpFingers[0];
+            tmpFingers[0] =  tmpFingers[maxDofIdx];
+            tmpFingers[maxDofIdx] =  tmpF;
+        }
+
+        for(int i = 0; i < 5; i ++){
+            fingers[i] = tmpFingers[i];
+        }
+
+        for(int i = 0; i < 4; i ++){
+            fingers[0]->length[i] = scale * length[0][i];
+        }
+    }
+
     basisThumbAngle = fingers[0]->Dof[0];
     float fingerAngle[4];
-//    qDebug()<<"before sort";
+    //    qDebug()<<"before sort";
 
     for(int i = 1;i < 5; i ++){
         Finger2D *f = fingers[i];
         fingerAngle[i - 1] = fabs(f->Dof[0] - basisThumbAngle);
-//        qDebug()<<"finger "<<i<<"="<<f->Dof[0];
+        if(fingerAngle[i - 1] > CV_PI)
+            fingerAngle[i - 1] = 2 * CV_PI - fingerAngle[i - 1];
+        //        qDebug()<<"finger "<<i<<"="<<f->Dof[0];
     }
 
     qsort(fingerAngle, 4,sizeof(float),comparef);  //from big to small
@@ -80,6 +150,9 @@ void HandStructure2D::sortFingers(){
         for(int j = 1; j < 5; j ++){
             Finger2D *f = fingers[j];
             float value = fabs(f->Dof[0] - basisThumbAngle);
+            if(value > CV_PI)
+                value = 2 * CV_PI - value;
+
             if(fabs(value - fingerAngle[i]) < 1e-6){
                 tmpFingers[i] = f;
             }
@@ -127,27 +200,47 @@ void HandStructure2D::initPoints(){
             jointPts[0][3 - j] = pt;
         }
 
+        int count = 1;
+        for(int i = 0; i < fingerlines.size(); i ++){
+            if(i == thumbIdx)
+                continue;
+            deque<Point> line = fingerlines[i];
+            vector<int> idxs = fingerJointsIdx[i];
+            for(int j = 0; j < idxs.size(); j ++){
+                Point pt;
+                if(idxs[j] == fakePointIdx){
+                    pt = fakeend;
+                }else{
+                    pt = line[idxs[j]];
+                }
+                jointPts[count][3 - j] = pt;
+            }
+            count ++;
+        }
+
     }else{
         qDebug()<<"error: thumb idx = "<<thumbIdx<<"from 0 to "<<fingerlines.size();
+        Finger2D *f0 = fingers[0];
+        Finger2D *f1 = fingers[1];
+        for(int i = 0; i < 4; i ++){
+            f0->length[i] = f1->length[i];
+        }
+
+        for(int i = 0; i < fingerlines.size(); i ++){
+            deque<Point> line = fingerlines[i];
+            vector<int> idxs = fingerJointsIdx[i];
+            for(int j = 0; j < idxs.size(); j ++){
+                Point pt;
+                if(idxs[j] == fakePointIdx){
+                    pt = fakeend;
+                }else{
+                    pt = line[idxs[j]];
+                }
+                jointPts[i][3 - j] = pt;
+            }
+        }
     }
 
-    int count = 1;
-    for(int i = 0; i < fingerlines.size(); i ++){
-        if(i == thumbIdx)
-            continue;
-        deque<Point> line = fingerlines[i];
-        vector<int> idxs = fingerJointsIdx[i];
-        for(int j = 0; j < idxs.size(); j ++){
-            Point pt;
-            if(idxs[j] == fakePointIdx){
-                pt = fakeend;
-            }else{
-                pt = line[idxs[j]];
-            }
-            jointPts[count][3 - j] = pt;
-        }
-        count ++;
-    }
     syncVec();
 }
 
@@ -159,6 +252,8 @@ void HandStructure2D::fitSkeleton(){
 
     for(int i = 0; i < 5; i ++){
         QVector2D pt[5] = {center,joints[i][0],joints[i][1],joints[i][2],joints[i][3]};
+        qDebug()<<"joints  "<<i<<"="<<joints[i][0];
+
         QVector2D dir[4];
 
         float rad[4];
@@ -192,7 +287,7 @@ void HandStructure2D::fitSkeleton(){
 
 //                qDebug()<<"rad["<<j<<"]="<<rad[j]<<cos(rad[j])<<sin(rad[j])<<"scale = "<<scale;
 
-                line(img,pppt1,pppt2,Scalar(255,0,0),1,CV_AA);
+                line(img,pppt1,pppt2,Scalar(paintColor[i].b,paintColor[i].g,paintColor[i].r),1,CV_AA);
                 circle(img,pppt1,3,Scalar(0,255,0));
                 circle(img,pppt2,3,Scalar(0,0,128));
 
@@ -383,72 +478,82 @@ void HandStructure2D::adjustSkeleton(){
 
     int notfit = 1;
     int count = 0;
-//    while(notfit){
-//        if(count ++ > 0)
-//            break;
+    while(notfit){
+        if(count ++ > 3)
+            break;
         int tmpnotfit = 0;
 
 
-    float radsum = 0;
-    float threshold1 = CV_PI / 2.0;
-    float threshold2 = CV_PI / 4.0;
-    float threshold3 = pow(CV_PI / 6.0,2) * 3;
+        float radsum = 0;
+        float threshold1 = CV_PI / 2.0;
+        float threshold2 = CV_PI / 4.0;
+        float threshold3 = pow(CV_PI / 6.0,2) * 3;
 
 
-    for(int i = 0; i < 4; i ++){
-        Finger2D *f1 = fingers[i];
-        Finger2D *f2 = fingers[i + 1];
+        for(int i = 0; i < 4; i ++){
+            Finger2D *f1 = fingers[i];
+            Finger2D *f2 = fingers[i + 1];
 
-        float rad1 = f1->Dof[0];
-        float rad2 = f2->Dof[0];
-        float deltaRad = fabs(rad2 - rad1);
-        if(deltaRad > CV_PI)
-            deltaRad = 2 * CV_PI - deltaRad;
+            float rad1 = f1->Dof[0];
+            float rad2 = f2->Dof[0];
+            float deltaRad = fabs(rad2 - rad1);
+            if(deltaRad > CV_PI)
+                deltaRad = 2 * CV_PI - deltaRad;
 
-        if(i == 0){
-            if(deltaRad > threshold1){
-                qDebug()<<"threshold1";
-                tmpnotfit = 1;
+            if(i == 0){
+                if(deltaRad > threshold1){
+                    qDebug()<<"threshold1";
+                    tmpnotfit = 1;
+                }
+            }else{
+                if(deltaRad > threshold2){
+                    qDebug()<<"threshold2";
+                    tmpnotfit = 1;
+                }
+                radsum += pow(deltaRad, 2);
             }
-        }else{
-            if(deltaRad > threshold2){
-                qDebug()<<"threshold2";
-                tmpnotfit = 1;
-            }
-            radsum += pow(deltaRad, 2);
+
+            qDebug()<<"deltaRad "<<i<<deltaRad;
         }
 
-        qDebug()<<"deltaRad "<<i<<deltaRad;
-    }
 
-
-    if(radsum > threshold3){
-        qDebug()<<"threshold3";
-        tmpnotfit = 1;
-    }
-    qDebug()<<"thresh"<<threshold1<<threshold2<<threshold3<<"radsum"<<radsum;
-    if(tmpnotfit){
-        qDebug()<<"center redefine";
-        QVector2D moveDir(0,0);
-        for(int i = 0; i < 5; i ++){
-            QVector2D tmpdir = joints[i][0] - center;
-            tmpdir.normalize();
-            moveDir = moveDir + tmpdir;
+        if(radsum > threshold3){
+            qDebug()<<"threshold3";
+            tmpnotfit = 1;
         }
-        moveDir = -moveDir/5.0/2.0;
-        Mat img = imread(folder_path + "gesture.jpg");
+        qDebug()<<"thresh"<<threshold1<<threshold2<<threshold3<<"radsum"<<radsum;
+        if(tmpnotfit){
+            qDebug()<<"center redefine";
+            QVector2D moveDir(0,0);
+            for(int i = 0; i < 5; i ++){
+                QVector2D tmpdir = joints[i][0] - center;
+                tmpdir.normalize();
+                moveDir = moveDir + tmpdir;
+            }
+            moveDir = -moveDir/5.0/2.0;
+//            moveDir =  - joints[2][0] + center;
+//            moveDir.normalize();
+            Mat img = imread(folder_path + "gesture.jpg");
 
-        qDebug()<<scale<<moveDir;
-        cv::line(img,Point(center.x(),center.y()),Point(center.x() + scale * moveDir.x(),center.y() + scale * moveDir.y()),Scalar(128,128,128));
-        imwrite(folder_path+"center_redef.png",img);
-        center = center + scale * moveDir;
+            qDebug()<<scale<<moveDir;
+            cv::line(img,Point(center.x(),center.y()),Point(center.x() + scale * moveDir.x(),center.y() + scale * moveDir.y()),Scalar(128,128,128));
+            imwrite(folder_path+"center_redef.png",img);
+            QVector2D newcenter = center + scale * moveDir;
 
-        initPoints();
-        fitSkeleton();
-        calPoints();
+            initPoints();
+            center = newcenter;
+
+            fitSkeleton();
+            calPoints();
+        }
+        notfit = tmpnotfit;
     }
-    notfit = tmpnotfit;
-//    }
+    qDebug()<<"adjust count ="<<count;
+}
+
+float HandStructure2D::calVariance(){
+    float var = 0.0;
+    return var;
 }
 
 void HandStructure2D::drawPoints(){
@@ -473,7 +578,7 @@ void HandStructure2D::drawPoints(){
     }
 
     imwrite(folder_path + "hand_joints.png",img);
-    imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre/finger_img" + to_string(indexofImg) + ".png",img);
+    imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre/skeleton_img" + to_string(indexofImg) + ".png",img);
 
 }
 

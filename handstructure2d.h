@@ -73,6 +73,7 @@ public:
     void initPoints();
     void sortFingers();
     void adjustSkeleton();
+    float calVariance();
 
     //    void clear();
 

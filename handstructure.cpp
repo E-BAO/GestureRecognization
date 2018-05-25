@@ -8,6 +8,8 @@
 
 HandStructure::HandStructure()
 {
+    qDebug()<<"HandStructure";
+
     position = QVector3D(0.0f,0.0f,0.0f);
     rotationAxis = QVector3D(1.0f,0.0f,0.0f);
     rotationAngle = 0.0f;
