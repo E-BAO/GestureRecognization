@@ -16,6 +16,27 @@ Scalar random_color(RNG& _rng)
 
 vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
 
+void deque2vector(deque<Point> &in_deques, vector<Point> &out_vectors){
+    qDebug()<<"---------deque2vector--------";
+    Point last,tmp,mid,end;
+    out_vectors.clear();
+    for(int i = 1; i < in_deques.size();i++){
+        last = in_deques[i - 1];
+        tmp = in_deques[i];
+        if(abs(last.x - tmp.x) < 2 && abs(last.y - tmp.y) < 2){
+            out_vectors.push_back(last);
+        }else{
+            qDebug()<<"neibor is ";
+            mid = last;
+            end = tmp;
+            for(int j = in_deques.size() - 1; j >= i; j --){
+                out_vectors.push_back(in_deques[j]);
+            }
+            break;
+        }
+    }
+}
+
 void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 {
 //    qDebug()<<"image gesture"<<indexofImg;
@@ -213,14 +234,9 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     imwrite(folder_path + "contoursMaskimg.png",maskImage);
 
-
-    cv::blur(bw_inv,bw_inv,Size(3,3));
-    threshold(bw_inv, bw_inv, 128, 255, CV_THRESH_BINARY);
-    imwrite(folder_path + "bw_inv_blur3.png",bw_inv);
-
     Mat thinMaskImage(dst.rows + 2, dst.cols + 2, CV_8UC1, Scalar(0));
     thinMaskImage(Range(1,thin.rows + 1),Range(1,thin.cols + 1)) = thin;
-    floodFill(bw_inv,thinMaskImage,Point(0,0),Scalar(128,128,128),&ccomp, Scalar(25,25,25), Scalar(25,25,25),flags);
+    floodFill(thin,thinMaskImage,Point(0,0),Scalar(255),&ccomp, Scalar(25), Scalar(25),flags);
     Mat handContours(dst.rows + 2, dst.cols + 2, CV_8UC1, Scalar(0));
     handContours = thinMaskImage(Range(1,thin.rows + 1),Range(1,thin.cols + 1));
 //    Mat black_Contours(handContours.rows, handContours.cols, CV_8UC1, Scalar(255));
@@ -229,6 +245,25 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 //    black_Contours_mini.copyTo(black_Contours(Range(2,black_Contours_mini.rows + 2),Range(2,black_Contours_mini.cols + 2)));
 
 //    handContours += black_Contours;
+
+    int dirlen = 2;
+
+    int matCount = countMat(handContours,255);
+    qDebug()<<"white ="<<matCount;
+
+    imwrite(folder_path + "black_Contours1.png",handContours);
+
+    if(matCount > 0.9 * (handContours.cols * handContours.rows)){
+        qDebug()<<"error: all white";
+        cv::blur(bw_inv,bw_inv,Size(3,3));
+        threshold(bw_inv, bw_inv, 128, 255, CV_THRESH_BINARY);
+        imwrite(folder_path + "bw_inv_blur3.png",bw_inv);
+        Mat bw_invMaskImage(dst.rows + 2, dst.cols + 2, CV_8UC1, Scalar(0));
+        bw_invMaskImage(Range(1,bw_inv.rows + 1),Range(1,bw_inv.cols + 1)) = bw_inv;
+        floodFill(bw_inv,bw_invMaskImage,Point(0,0),Scalar(255),&ccomp, Scalar(25), Scalar(25),flags);
+        handContours = bw_invMaskImage(Range(1,bw_inv.rows + 1),Range(1,bw_inv.cols + 1));
+        dirlen = 6;
+    }
 
     imwrite(folder_path + "black_Contours.png",handContours);
 
@@ -298,7 +333,9 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 //    vector<int> curvePointIdx;
 //    vector<int> maxima_idx;
     vector<Point> curve_vex;
-    findFingerEnds(folder_path, handContours_inv,handOutline_px[0],curve_vex,3,10);
+    findFingerEnds(folder_path, handContours_inv,handOutline_px[0],curve_vex,3,10,dirlen);
+
+    qDebug()<<"tubao size = "<<curve_vex.size();
 
     double dist, maxdist = -1;
 
@@ -410,7 +447,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     thinning(thin_inv, thin_inv);
 
     threshold(thin_inv, thin_inv, 128, 255, CV_THRESH_BINARY);
-
 
 //    thin_inv -= imageGreenChannel;
 
@@ -668,10 +704,13 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     vector<deque<Point>> lines;
     vector<deque<Point>> lines_ori;
+    vector<vector<Point>> lines_vec;
 
 //    imwrite(folder_path + "thin_bone.png",thin_inv);
 
     findLines(thin_inv, lines);
+//    findLines_vec(thin_inv,lines_vec);
+
     lines_ori = lines;
 
     /*********** delete short lines *************/
@@ -687,10 +726,67 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             if(lines[i].size() < threshold){
                 lines.erase(lines.begin() + i);
                 i--;
+            }else{
+                vector<Point> line_vec;
+                deque<Point> line_deq = lines[i];
+                deque2vector(line_deq,line_vec);
+                lines_vec.push_back(line_vec);
             }
         }
 
     }
+
+
+//    if(lines_vec.size() > 3){
+//        int line_lenth[lines_vec.size()];
+//        for(int i = 1; i < lines_vec.size(); i ++){
+//            line_lenth[i] = lines_vec[i].size();
+//        }
+//        qsort(line_lenth, lines_vec.size(),sizeof(int),compare);
+//        float threshold = line_lenth[2] * 0.1;
+//        for(int i = 0; i < lines_vec.size(); i ++){
+//            if(lines_vec[i].size() < threshold){
+//                lines_vec.erase(lines_vec.begin() + i);
+//                i--;
+//            }else{
+////                vector<Point> line_vec;
+////                deque<Point> line_deq = lines[i];
+////                deque2vector(line_deq,line_vec);
+////                lines_vec.push_back(line_vec);
+//            }
+//        }
+
+//    }
+    qDebug()<<"size of lines and vecs = "<<lines.size()<<lines_vec.size();
+
+
+    QString filepath1 = QString::fromStdString(folder_path) + "lines.txt";
+    QFile f1(filepath1);
+    if(!f1.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        qDebug() << "Open failed.";
+        return;
+    }
+
+    QTextStream txtOutput1(&f1);
+
+    txtOutput1 << lines_vec.size() << "\t\n";
+
+    for(int i = 0; i < lines_vec.size();i ++){
+        vector<Point> fingerLine = lines_vec[i];
+        qDebug() << "fingerLine"<<i<<"size = "<<lines_vec.size();
+
+        for(int j = 0;j < fingerLine.size(); j++){
+            Point pt = fingerLine[j];
+            int x = pt.x;
+            int y = pt.y;
+            txtOutput1 << x << "," << y << "\t";
+        }
+        txtOutput1 <<"\n";
+    }
+
+    f1.close();
+
 
     /***************************************/
 
@@ -703,15 +799,41 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     Mat draw_img_gray = Mat(src.rows, src.cols, CV_8UC1, Scalar(0));
 
     int count_line = 0;
-    for (int i = 0; i < lines.size(); i++)
+    for (int i = 0; i < lines_vec.size(); i++)
     {
         count_line ++;
+        Mat draw_img_1;
+        cvtColor(thin,draw_img_1,CV_GRAY2BGR);
         color = Scalar( rng.uniform(50, 255), rng.uniform(50,255), rng.uniform(50,255) );
-        for (int j = 0; j < lines[i].size(); j++)
+        for (int j = 0; j < lines_vec[i].size(); j++)
         {
-            draw_img.at<Vec3b>(lines[i][j]) = Vec3b(color[0], color[1], color[2]);
-            draw_img_gray.at<uchar>(lines[i][j]) = 255;
+            draw_img_1.at<Vec3b>(lines_vec[i][j]) = Vec3b(255 - j, color[1], 0);
+
+            draw_img.at<Vec3b>(lines[i][j]) = Vec3b(255 - j, color[1], 0);
+            draw_img_gray.at<uchar>(lines_vec[i][j]) = 255;
         }
+        //b -> r
+        cv::circle(draw_img_1, lines_vec[i][0], 2, cv::Scalar(255),1,CV_AA);// adjusted
+        cv::circle(draw_img_1, lines_vec[i][lines_vec[i].size() - 5], 2, cv::Scalar(0,0,255),1,CV_AA);// adjusted
+        char ic = '0' + i;
+        imwrite(folder_path + "draw_line"+ic+".png",draw_img_1);
+
+
+//        cv::circle(draw_img_1, lines[i][0], 2, cv::Scalar(255),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][3], 2, cv::Scalar(255,128,0),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][lines[i].size() - 1], 2, cv::Scalar(0,0,255),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][lines[i].size() - 2], 2, cv::Scalar(0,128,255),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][lines[i].size()*0.75], 2, cv::Scalar(0,255,255),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][lines[i].size()*0.5], 2, cv::Scalar(0,255,0),1,CV_AA);// adjusted
+//        cv::circle(draw_img_1, lines[i][lines[i].size()*0.25], 2, cv::Scalar(255,255,0),1,CV_AA);// adjusted
+
+    }
+
+
+    for (int i = 0; i < lines[3].size(); i++){
+
+
+
     }
 
 //    vector<Mat> channels;
@@ -739,6 +861,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             draw_img_all.at<Vec3b>(lines_ori[i][j]) = Vec3b(color[0], color[1], color[2]);
             draw_img_gray_all.at<uchar>(lines_ori[i][j]) = 255;
         }
+
     }
 
 //    vector<Mat> channels;
@@ -893,7 +1016,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 Point this_point = tmpPoint;//center + circle_points[i];
                 Point next_point;
                 int counti;
-                int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
+                int dist = findPoint(neighbor_points,largeCircle,this_point,next_point,counti);
 
 //                qDebug("counti ===== %d",counti);
                 //                if(counti < 2){
@@ -909,7 +1032,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     Point tmppt = this_point + neighbor_points[ii];
                     if(midCircle.at<uchar>(tmppt) == 255){
                         midCircle.at<uchar>(tmppt) = 0;
-                        findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+                        findPoint(neighbor_points,midCircle,this_point,next_point,counti);
                     }
                 }
                 //                }
@@ -917,7 +1040,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 //                Point this_point = tmpPoint;
 //                Point next_point;
 //                int counti;
-//                findFarPoint(neighbor_points,midCircle,this_point,next_point,counti);
+//                findPoint(neighbor_points,midCircle,this_point,next_point,counti);
 //                break;
                 for(int j = 0;j < neighbor_points.size(); j ++){
                     Point ttmpPoint = tmpPoint + neighbor_points[j];
@@ -926,7 +1049,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         Point this_point = ttmpPoint;
                         Point next_point;
                         int counti;
-                        int dist = findFarPoint(neighbor_points,largeCircle,this_point,next_point,counti);
+                        int dist = findPoint(neighbor_points,largeCircle,this_point,next_point,counti);
 //                        qDebug("counti ===== %d",counti);
 
 //                        if(counti < 3){
@@ -1013,7 +1136,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 //    qDebug("finger_lines_far.siez = %d",finger_lines_far.size());
 
-    Mat mmmm = draw_img.clone();
     for(int i = 0;i < finger_lines_far.size(); i ++){
         deque<Point> line = finger_lines_far[i];
         if(line.size() < 10)
@@ -1043,7 +1165,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 if(distfromcenter1 > r1){
                     int duplicate = 0;
                     for(int m = 0; m < finger_ends_good.size();m ++){
-                        if(pt2 == finger_ends_good[m]){
+                        if(pt2 == finger_ends_good[m]||pt1 == finger_ends_good[m]){
                             duplicate = 1;
                             break;
                         }
@@ -1055,7 +1177,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 if(distfromcenter2 > r1){
                     int duplicate = 0;
                     for(int m = 0; m < finger_ends_good.size();m ++){
-                        if(pt1 == finger_ends_good[m]){
+                        if(pt2 == finger_ends_good[m]||pt1 == finger_ends_good[m]){
                             duplicate = 1;
                             break;
                         }
@@ -1064,15 +1186,20 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         finger_ends.push_back(pt2);
                 }
             }
-            if(finger_ends.size() > 0)
-                circle(mmmm,*(finger_ends.end() - 1),5,Scalar(225),1);
+
         }
     }
 
-    imwrite(folder_path + "finger_ends_short.png",mmmm);
-    qDebug()<<"finger_ends.size  hhh" <<finger_ends.size();
+
+    Mat finger_ends_imagecl = finger_ends_image.clone();
+
+    for(int i = 0; i < finger_ends.size(); i ++){
+        cv::circle(finger_ends_imagecl, finger_ends[i], 5, cv::Scalar(255),1,CV_AA);// adjusted
+    }
+    imwrite(folder_path + "finger_ends_guess.png",finger_ends_imagecl);
 
     vector<Point> no_repu_ends;
+//    no_repu_ends.assign(finger_ends_good.begin(),finger_ends_good.end());
     for(int i = 0; i < finger_ends.size(); i ++){
         int found = 0;
         for(int j = 0;j < finger_ends_good.size();j++){
@@ -1087,12 +1214,15 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     finger_ends.clear();
     finger_ends = no_repu_ends;
 
-    Mat finger_ends_imagecl = finger_ends_image.clone();
+//    Mat mmmm = draw_img.clone();
 
-    for(int i = 0; i < finger_ends.size(); i ++){
-        cv::circle(finger_ends_imagecl, finger_ends[i], 5, cv::Scalar(255),1,CV_AA);// adjusted
-    }
-    imwrite(folder_path + "finger_ends_guess.png",finger_ends_imagecl);
+//    for(int i = 0; i < finger_ends.size(); i ++){
+//        circle(mmmm,finger_ends[i],3+2 *i,Scalar(225),1);
+//    }
+
+//    imwrite(folder_path + "finger_ends_nod.png",mmmm);
+//    qDebug()<<"no_repu_ends.size good ="<<finger_ends.size();
+
 
     qDebug()<<"finger_ends.size  hhh" <<finger_ends.size();
     imwrite(folder_path + "largeCircle_b.png",largeCircle_b);
@@ -1300,23 +1430,44 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     /***************************************/
 
+//    vector<Point> no_repu_ends;
+////    no_repu_ends.assign(finger_ends_good.begin(),finger_ends_good.end());
+//    for(int i = 0; i < finger_ends.size(); i ++){
+//        int found = 0;
+//        for(int j = 0;j < finger_ends_good.size();j++){
+//            if(finger_ends_good[j] == finger_ends[i]){
+//                found = 1;
+//                break;
+//            }
+//        }
+//        if(!found)
+//            no_repu_ends.push_back(finger_ends[i]);
+//    }
+//    finger_ends.clear();
+//    finger_ends = no_repu_ends;
 
     /***************** find line and joints **********************/
 //    vector<Point> fingerEnds_onLine[lines.size()];
 
     vector<vector<Point>> points_onlines;
     vector<vector<int>> points_ol_idx;
+    vector<vector<int>> points_ol_level;
 
     for(int i = 0; i < lines.size(); i ++){
         vector<Point> pts;
         vector<int> idxs;
+        vector<int> levels;
         points_onlines.push_back(pts);
         points_ol_idx.push_back(idxs);
+        points_ol_level.push_back(levels);
     }
 
-    Mat finger_img = thin.clone();
+    Mat finger_img;// = thin.clone();
+    cvtColor(thin,finger_img,CV_GRAY2BGR);
 
     int fingerends_ol_idx[finger_ends_good.size()];
+
+    int level_i = 0;
 
     qDebug()<<"insert finger ends size ="<<finger_ends_good.size();
     for(int i = 0; i < finger_ends_good.size(); i++){
@@ -1352,10 +1503,12 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         lines.push_back(halfline2);
                         vector<Point> pts;
                         vector<int> inds;
+                        vector<int> levels;
                         pts.push_back(p);
                         inds.push_back(0);
                         points_onlines.push_back(pts);
                         points_ol_idx.push_back(inds);
+                        points_ol_level.push_back(levels);
                         qDebug()<<"lines = "<<lines.size()\
                             <<"points online = "<<points_onlines.size()\
                            <<"points_ol_idx = "<<points_ol_idx.size();
@@ -1363,6 +1516,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     }
                     points_onlines[j].push_back(p);
                     points_ol_idx[j].push_back(0);
+                    points_ol_level[j].push_back(level_i);
                     if(k == 1)
                         reverse(lines[j].begin(),lines[j].end());
                     break;
@@ -1379,6 +1533,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     }
 
 
+    level_i = 1;
+
     Point fakeEnds(-1, -1);
 
     for(int i = 0; i < crossPoints.size(); i++){
@@ -1391,9 +1547,11 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     if(points_onlines[j].size() == 0){
                         points_onlines[j].push_back(fakeEnds);
                         points_ol_idx[j].push_back(-1);
+                        points_ol_level[j].push_back(level_i);
                     }
                     points_onlines[j].push_back(p);
                     points_ol_idx[j].push_back(k);
+                    points_ol_level[j].push_back(level_i);
                     found = 1;
                     break;
                 }else{
@@ -1403,9 +1561,11 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                             if(points_onlines[j].size() == 0){
                                 points_onlines[j].push_back(fakeEnds);
                                 points_ol_idx[j].push_back(-1);
+                                points_ol_level[j].push_back(level_i);
                             }
                             points_onlines[j].push_back(p);
                             points_ol_idx[j].push_back(k);
+                            points_ol_level[j].push_back(level_i);
                             found = 1;
                             break;
                         }
@@ -1422,6 +1582,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     vector<deque<Point>> fingerLines;
     vector<vector<Point>> fingerJoints;
     vector<vector<int>> fingerJointsIdx;
+    vector<vector<int>> fingerJointsLv;
 
     Mat draw_good_joints = src.clone();
     for(int i = 0; i < lines.size(); i ++){
@@ -1430,6 +1591,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             fingerLines.push_back(lines[i]);
             fingerJoints.push_back(points_onlines[i]);
             fingerJointsIdx.push_back(points_ol_idx[i]);
+            fingerJointsLv.push_back(points_ol_level[i]);
             deque<Point> line_i = lines[i];
             vector<Point> vec_line;
             vec_line.assign(line_i.begin(),line_i.end());
@@ -1470,6 +1632,9 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     int ii = fingerJointsIdx[i][j];
                     fingerJointsIdx[i][j] = fingerJointsIdx[i][k];
                     fingerJointsIdx[i][k] = ii;
+                    int ll = fingerJointsLv[i][j];
+                    fingerJointsLv[i][j] = fingerJointsLv[i][k];
+                    fingerJointsLv[i][k] = ll;
                     break;
                 }
             }
@@ -1540,6 +1705,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     int thumbIdx = -1;
 
+    int valid_dist = 5;
+
     for(int i = 0; i < fingerJoints.size(); i ++){
 
         Mat jjj = thin_inv.clone();
@@ -1549,9 +1716,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
         qDebug("finger %d_______  fingerJoints = %d",i,fingerJoints[i].size());
 
-
-        if(fingerJoints[i][0] == fakeEnds && fingerJoints[i].size() > 3){
-        }
+        level_i = 2;
 
         if(fingerJoints[i][0] != fakeEnds && fingerJoints[i].size() == 1){
             qDebug("finger 1 found!");
@@ -1566,6 +1731,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     found = 1;
                     fingerJoints[i].push_back(pt1);
                     fingerJointsIdx[i].push_back(j);
+                    fingerJointsLv[i].push_back(level_i);
                     break;
                 }
             }
@@ -1574,10 +1740,14 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 pt1 = *(fingerLines[i].end() - 1);
                 int idx1 = fingerLines[i].size();
                 double ddist = sqrt((pt1 - end).dot(pt1 - end));
-                if(fabs(ddist - adist) < adist * 0.2f && fabs(idx1 - endIdx)){
+                if(fabs(ddist - adist) < adist * 0.2f && fabs(idx1 - endIdx) < adist * 2){
                     found = 1;
-                    fingerJoints[i].push_back(pt1);
-                    fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+                    int idx_valid = fingerLines[i].size() - valid_dist;
+                    Point pt1_valid = fingerLines[i][idx_valid];
+
+                    fingerJoints[i].push_back(pt1_valid);
+                    fingerJointsIdx[i].push_back(idx_valid);
+                    fingerJointsLv[i].push_back(level_i);
                 }
             }
             if(found){
@@ -1585,6 +1755,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 cv::circle(finger_img, pt1,3, cv::Scalar(128),1,CV_AA);// adjusted
 //                    bonelenth.push_back(adist);
 //                    finger_roots.push_back(root);
+                level_i ++;
             }
         }
 
@@ -1605,6 +1776,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         found = 1;
                         fingerJoints[i].push_back(pt2);
                         fingerJointsIdx[i].push_back(j);
+                        fingerJointsLv[i].push_back(level_i);
                         break;
                     }
                 }
@@ -1614,13 +1786,20 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     double ddist = sqrt((pt2 - pt1).dot(pt2 - pt1));
                     if(fabs(ddist - aadist) < aadist * 0.2f && fingerLines[i].size() - fingerJointsIdx[i][1] < aadist * 2.0f){
                         found = 1;
-                        fingerJoints[i].push_back(pt2);
-                        fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+
+                        int idx_valid = fingerLines[i].size() - valid_dist;
+                        Point pt2_valid = fingerLines[i][idx_valid];
+
+                        fingerJoints[i].push_back(pt2_valid);
+                        fingerJointsIdx[i].push_back(idx_valid);
+                        fingerJointsLv[i].push_back(level_i);
+
                     }
                 }
                 if(found){
                     qDebug("pt2 found!!!!");
                     cv::circle(finger_img, pt2,8, cv::Scalar(128),1,CV_AA);// adjusted
+                    level_i ++;
 //                    bonelenth.push_back(aadist);
 //                    finger_roots.push_back(root);
                 }
@@ -1630,6 +1809,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 Point pt1 = fingerLines[i][idx1];
                 fingerJoints[i].insert(fingerJoints[i].begin() + 1, fingerLines[i][idx1]);
                 fingerJointsIdx[i].insert(fingerJointsIdx[i].begin() + 1,idx1);
+                fingerJointsLv[i].insert(fingerJointsLv[i].begin() + 1,level_i);
+                level_i ++;
                 cv::circle(finger_img,pt1 ,8, cv::Scalar(128),1,CV_AA);// adjusted
             }
         }
@@ -1662,6 +1843,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         found = 1;
                         fingerJoints[i].push_back(root);
                         fingerJointsIdx[i].push_back(j);
+                        fingerJointsLv[i].push_back(level_i);
                         break;
                     }
                 }
@@ -1671,8 +1853,14 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     double ddist = sqrt((pt2 - root).dot(pt2 - root));
                     if(fabs(ddist - adist) < adist * 0.4f && fingerLines[i].size() - fingerJointsIdx[i][2] < adist * 2.0f){
                         found = 1;
-                        fingerJoints[i].push_back(root);
-                        fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
+
+                        int idx_valid = fingerLines[i].size() - valid_dist;
+                        Point root_valid = fingerLines[i][idx_valid];
+
+                        fingerJoints[i].push_back(root_valid);
+                        fingerJointsIdx[i].push_back(idx_valid);
+                        fingerJointsLv[i].push_back(level_i);
+
                     }
                 }
                 if(found){
@@ -1680,6 +1868,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                     cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
 //                    bonelenth.push_back(aadist);
                     finger_roots.push_back(root);
+                    level_i++;
                 }
             }else if(fabs(dist01 - dist12) < max(dist01,dist12) * 0.5){  //adjust
                 qDebug("over match");
@@ -1688,10 +1877,16 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                 double ddist = sqrt((pt2 - root).dot(pt2 - root));
                 if(fabs(ddist - adist) < adist * 0.2f && fingerLines[i].size() - fingerJointsIdx[i][2] < adist * 2.0f){
                     found = 1;
-                    fingerJoints[i].push_back(root);
-                    fingerJointsIdx[i].push_back(fingerLines[i].size() - 1);
-                    finger_roots.push_back(root);
-                    cv::circle(finger_img, root,10, cv::Scalar(225),1,CV_AA);// adjusted
+
+                    int idx_valid = fingerLines[i].size() - valid_dist;
+                    Point root_valid = fingerLines[i][idx_valid];
+
+                    fingerJoints[i].push_back(root_valid);
+                    fingerJointsIdx[i].push_back(idx_valid);
+                    fingerJointsLv[i].push_back(level_i ++);
+
+                    finger_roots.push_back(root_valid);
+                    cv::circle(finger_img, root_valid,10, cv::Scalar(225),1,CV_AA);// adjusted
                     qDebug("root found!!!!");
                 }
             }
@@ -1718,13 +1913,27 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     }
 
-    for(int i = 0; i < fingerLines.size(); i ++){
-        for(int j = 0; j < fingerLines[i].size(); j ++){
-            finger_img.at<uchar>( fingerLines[i][j]) = 255;
-        }
-    }
+    Scalar c_red(0,0,255);
+    Scalar c_yellow(0,255,255);
+    Scalar c_green(0,255,0);
+    Scalar c_cyan(255,255,0);
+    Scalar c_blue(255,0,0);
+    Scalar c_black(0, 0, 0);
 
-    for(int i = 0;i < fingerJoints.size();i++){
+    Scalar paintColor[6] = {
+        c_red,c_yellow,c_green,c_cyan,c_blue,c_black
+    };
+
+
+    for(int i = 0; i < fingerLines.size(); i ++){
+        color = paintColor[i%6];
+
+        for(int j = 0; j < fingerLines[i].size(); j ++){
+            finger_img.at<Vec3b>( fingerLines[i][j]) = Vec3b(color[0],color[1],color[2]);
+        }
+//    }
+
+//    for(int i = 0;i < fingerJoints.size();i++){
         for(int j = 0; j < fingerJointsIdx[i].size(); j ++){
             if( fingerJoints[i][j] == fakeEnds || fingerJointsIdx[i][j] == -1)
                 continue;
@@ -1738,13 +1947,13 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             }
             Point tmppoint = fingerLines[i][fingerJointsIdx[i][j]];
             if (tmppoint.x > 0 && tmppoint.y > 0 && tmppoint.x < finger_img.cols&&tmppoint.y < finger_img.rows){
-                finger_img.at<uchar>(tmppoint) = 128;
+                finger_img.at<Vec3b>(tmppoint) = Vec3b(color[0],color[1],color[2]);
                 int size = 2 * j + 2;
 //                switch(j){
 //                    case 0:
 //                }
 
-                cv::circle(finger_img, tmppoint,size, cv::Scalar(255),1,CV_AA);// adjusted
+                cv::circle(finger_img, tmppoint,size, color,1,CV_AA);// adjusted
             }else{
                 qDebug("error: col rows = %d %d, points = %d, %d",finger_img.cols, finger_img.rows,tmppoint.x,tmppoint.y);
             }
@@ -1788,6 +1997,15 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
         for(int j = 0;j < JointsIdx.size(); j++){
             int idx = JointsIdx[j];
             txtOutput << idx << "\t";
+        }
+        txtOutput <<"\n";
+    }
+
+    for(int i = 0; i < fingerJointsLv.size();i ++){
+        vector<int> JointsLv = fingerJointsLv[i];
+        for(int j = 0;j < JointsLv.size(); j++){
+            int lv = JointsLv[j];
+            txtOutput << lv << "\t";
         }
         txtOutput <<"\n";
     }
@@ -1861,7 +2079,7 @@ void localMaxima(vector<double> src,const int minPeakDistance,const double minHe
     }
 }
 
-void findFingerEnds(string folder_path, Mat &maskimg,deque<Point> &outline,vector<Point> &curve_vex,const int size, const float threshold)
+void findFingerEnds(string folder_path, Mat &maskimg,deque<Point> &outline,vector<Point> &curve_vex,const int size, const float threshold, const int dirlen)
 {
     qDebug()<<"---------findFingerEnds------------";
     vector<double> curvature;
@@ -1892,7 +2110,7 @@ void findFingerEnds(string folder_path, Mat &maskimg,deque<Point> &outline,vecto
         QVector2D dir_vec = pt_vec1 + pt_vec2;
         dir_vec.normalize();
         QVector2D pt_vec(pt.x,pt.y);
-        pt_vec = pt_vec + 2 * dir_vec;
+        pt_vec = pt_vec + dirlen * dir_vec;
         Point pt_dir(pt_vec.x(),pt_vec.y());
 
         if(maskimg.at<uchar>(pt_dir) == 255){
@@ -2120,8 +2338,11 @@ void findFingerLine(string folder_path, Mat &img, vector<deque<Point>> &lines, v
             Point endPt = lines[j][lines[j].size() - 1];
             int startD = (startPt - end).dot(startPt - end);
             int endD = (endPt - end).dot(endPt - end);
-            if(min(startD,endD) > maxdistance)
+            if(min(startD,endD) > maxdistance){
                 continue;
+            }
+            qDebug("hhahhahah");
+
             Point dstPt;
             if(startD < endD){
                 dstPt = startPt;
@@ -2186,9 +2407,10 @@ void findFingerLine(string folder_path, Mat &img, vector<deque<Point>> &lines, v
             */
 
             if(found_edge){
-                break;
+//                break;
             }else{
                 if(tmpdist < min_dist){
+                    qDebug()<<"jaksdf";
                     min_dist = tmpdist;
                     closeLineIdx = j;
                     endPoint = dstPt;
@@ -2267,4 +2489,38 @@ void findFingerLine(string folder_path, Mat &img, vector<deque<Point>> &lines, v
 //        }
 //    }
 
+}
+
+//int countMat(Mat& inputImg, int flag)
+//{
+//    int count = 0;
+//    int rowNumber = inputImg.rows;
+//    int colNumber = inputImg.cols * inputImg.channels();
+//    for (int i = 0; i < rowNumber;i++)
+//    {
+//        uchar* data = inputImg.ptr<uchar>(i);
+//        for (int j = 0; j < colNumber; j++)
+//        {
+//            sum = data[j] + sum;
+//        }
+//    }
+//    return sum;
+//}
+
+int countMat(Mat& inputImg, int val)
+{
+    int count = 0;
+    int rowNumber = inputImg.rows;
+    int colNumber = inputImg.cols * inputImg.channels();
+    for (int i = 0; i < rowNumber;i++)
+    {
+        uchar* data = inputImg.ptr<uchar>(i);
+        for (int j = 0; j < colNumber; j++)
+        {
+            int ii = (int)data[j];
+            if(ii == val)
+                count ++;
+        }
+    }
+    return count;
 }

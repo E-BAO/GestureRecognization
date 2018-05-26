@@ -1,4 +1,5 @@
 #include "thinning.h"
+#include "tjunctiondetect.h"
 
 /**
  * Perform one thinning iteration.
@@ -8,6 +9,73 @@
  * 		im    Binary image with range = [0,1]
  * 		iter  0=even, 1=odd
  */
+
+
+bool isLJunction(Mat &img,Point p){
+    int found = 0;
+    vector<Point> neighbor_points = {Point(0,-1),Point(1,0),Point(0,1),Point(-1,0) };
+    int blank[4] = {0,0,0,0};
+    int count = 0;
+    int i1 = -1;
+    int i2 = -1;
+    for(int i = 0; i < neighbor_points.size() ; i++){
+        Point tmpPoint = p + neighbor_points[i];
+        int px = img.at<uchar>(tmpPoint);
+        if(px == 255){
+            blank[i] = 1;
+            if(count == 0)
+                i1 = i;
+            if(count == 1)
+                i2 = i;
+            count++;
+        }
+    }
+
+    if(count > 2){
+        found = 1;
+    }else if(count == 2){
+        //01 12 23 31
+        if(abs(i1 - i2) != 2){
+
+//            (i1 == 0 && i2 == 1) ||\
+//                            (i1 == 1 && i2 == 2) ||\
+//                            (i1 == 2 && i2 == 3) ||\
+//                            (i1 == 3 && i2 == 1)
+            found = 1;
+        }
+    }
+
+//    qDebug()<<"count ="<<count<<"i1 ="<<i1<<"i2"<<i2<<"found ="<<found;
+
+    if(found){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+void removeDoubleLine(cv::Mat &src_img,cv::Mat &out_img){
+    Mat img = src_img.clone();
+
+    vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
+
+    for(int i = 0; i <img.cols;i ++){
+        for(int j = 0;j < img.rows; j ++){
+            Point pt(i,j);
+            if(img.at<uchar>(pt) == 255){
+                if(isLJunction(img,pt)){
+                    if(findTjunction(img,pt,neighbor_points)){
+
+                    }else{
+                        img.at<uchar>(pt) = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    out_img = img;
+}
 
 void thinningIteration(cv::Mat& img, int iter)
 {
@@ -108,5 +176,7 @@ void thinning(const cv::Mat& src, cv::Mat& dst)
     while (cv::countNonZero(diff) > 0);
 
     dst *= 255;
+
+    removeDoubleLine(dst,dst);
 }
 

@@ -115,7 +115,71 @@ bool isLine(Point p, double k, Point P0,double eps){
 }
 
 //寻找曲线
-void findLines(Mat &inputimg, vector<deque<Point>> &_outputlines)
+void findLines_vec(Mat &inputimg, vector<vector<Point>> &_outputlines)
+{
+    Mat _inputimg = inputimg.clone();
+    vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
+    Point first_point;
+    while (findFirstPoint(_inputimg, first_point))
+    {
+        vector<Point> vecLine;
+        deque<Point> line;
+        line.push_back(first_point);
+        vecLine.push_back(first_point);
+        //由于第一个点不一定是线段的起始位置，双向找
+        Point this_point = first_point;
+        int this_flag = 0;
+        Point next_point;
+        int next_flag;
+        while (findNextPoint(neighbor_points, _inputimg, this_point, this_flag, next_point, next_flag))
+        {
+            vecLine.push_back(next_point);
+            line.push_back(next_point);
+            this_point = next_point;
+            this_flag = next_flag;
+        }
+        //找另一边
+        this_point = first_point;
+        this_flag = 0;
+        //cout << "flag:" << this_flag << endl;
+        while (findNextPoint(neighbor_points, _inputimg, this_point, this_flag, next_point, next_flag))
+        {
+            line.push_front(next_point);
+//            vecLine.push_front(next_point);
+            vecLine.insert(vecLine.begin(),next_point);
+
+            this_point = next_point;
+            this_flag = next_flag;
+        }
+        cv::Vec4f line_para;
+        cv::fitLine(vecLine, line_para, cv::DIST_L2, 0, 1e-2, 1e-2);
+        Point point0;
+        point0.x = line_para[2];
+        point0.y = line_para[3];
+        double k = line_para[1] / line_para[0];
+
+        float eps = 1e-2;
+        if (line.size() > 10)  //adjusted
+        {
+            Point p_end = line.at(line.size() - 1);
+            Point p_start = line.at(0);
+            int range = 3;
+            if(p_start.x < range||p_start.y < range||p_end.x < range|| p_end.y < range){
+                continue;
+            }
+            if(isLine(line.at(0),k,point0,eps) \
+                    && isLine(line.at(line.size() - 1),k,point0,eps)\
+                    && isLine(line.at(line.size()/3),k,point0,eps) \
+                    && isLine(line.at(int(line.size() * 0.6)),k,point0,eps))
+                continue;
+            else
+                _outputlines.push_back(vecLine);
+        }
+    }
+}
+
+
+void findLines(Mat &inputimg, vector<deque<Point> > &_outputlines)
 {
     Mat _inputimg = inputimg.clone();
     vector<Point> neighbor_points = { Point(-1,-1),Point(0,-1),Point(1,-1),Point(1,0),Point(1,1),Point(0,1),Point(-1,1),Point(-1,0) };
@@ -177,7 +241,6 @@ void findLines(Mat &inputimg, vector<deque<Point>> &_outputlines)
         }
     }
 }
-
 
 void findEnd(Mat &img, Point centerPoint, Point2f &vecDir){
 

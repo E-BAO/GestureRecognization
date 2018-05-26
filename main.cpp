@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 
-    for(int i = 13;i <= 13; i ++){
+    for(int i = 0;i <= 13; i ++){
         string folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(i) + "/";
 
         qDebug()<<"image gesture ============== "<<i;
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
         Mat outimg;
         training(folder_path, out_para,outimg);
 
-        imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre/finger_img" + to_string(i) + ".png",outimg);
+        imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre_clr/finger_img" + to_string(i) + ".png",outimg);
     }
     waitKey(0);
 

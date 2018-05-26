@@ -11,7 +11,9 @@ bool findNextPoint(vector<Point> &_neighbor_points, Mat &_image, Point _inpoint,
 
 bool findFirstPoint(Mat &_inputimg, Point &_outputpoint);
 
-void findLines(Mat &inputimg, vector<deque<Point>> &_outputlines);
+void findLines_vec(Mat &inputimg, vector<vector<Point>> &_outputlines);
+
+void findLines(Mat &inputimg, vector<deque<Point> > &_outputlines);
 
 void findEnd(Mat &img, Point centerPoint, Point2f &vecDir);
 
