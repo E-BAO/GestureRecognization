@@ -31,8 +31,6 @@ RenderWidget::RenderWidget(QWidget *parent) : QWidget(parent)
     handCenter = new Point(174,238);
     handCtPoint->setGeometry(handCenter->x - handCtPoint->width()/2,handCenter->y-handCtPoint->height()/2,handCtPoint->width(),handCtPoint->height());
 
-
-    handStructure2d = new HandStructure2D();
 }
 
 QSize RenderWidget::minimumSizeHint() const

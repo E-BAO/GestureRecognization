@@ -24,8 +24,12 @@ Color paintColor[6] = {
 
 HandStructure2D::HandStructure2D()
 {
+//    calGesture();
+}
 
-    indexofImg = 22;
+void HandStructure2D::calGesture(){
+
+//    indexofImg = 2;
 
     folder_path = "/Users/ebao/study/lab/Gesture/images/gesture" + to_string(indexofImg) + "/";
 
@@ -49,6 +53,7 @@ HandStructure2D::HandStructure2D()
     }
 
     initPoints();
+
     fitSkeleton();
 
     calPoints();
@@ -56,6 +61,7 @@ HandStructure2D::HandStructure2D()
     adjustSkeleton();
 
     drawPoints();
+
     filepath = QString::fromStdString(folder_path) + "skeleton.txt";
     writeFile(filepath);
 }
@@ -163,41 +169,96 @@ void HandStructure2D::sortFingers(){
     }
 }
 
+void HandStructure2D::initPoints_parb(){
+    qDebug()<<"------------initPoints_parb------------";
+
+
+
+}
+
 void HandStructure2D::initPoints(){
     qDebug()<<"------------initPoints------------";
 
+    vector<vector<int>> fingerJointsValid;
+
+    for(int i = 0;i < fingerJointsIdx.size();i++){
+        vector<int> joints_valid;
+        for(int j = 0; j < fingerJointsIdx[i].size(); j ++){
+            if(fingerJointsIdx[i][j] == fakePointIdx){
+                joints_valid.push_back(-1);
+            }else{
+                joints_valid.push_back(1);
+            }
+        }
+        fingerJointsValid.push_back(joints_valid);
+    }
+
     for(int i = 0;i < fingerJointsIdx.size();i++){
 
-        if(i == thumbIdx)
-            continue;
+//        if(i == thumbIdx){
+//            continue;
 
-        if(fingerJointsIdx[i].size() <= 3 && fabs(fingerlines[i].size() - 1 - fingerJointsIdx[i][fingerJointsIdx[i].size() - 1]) > scale * 0.5){
-            fingerJointsIdx[i].push_back(fingerJointsIdx[i][fingerJointsIdx[i].size() - 1] + int(scale * 0.5));
-            qDebug()<<"pushpushpush";
+        int minLen = 10;
+
+        if(fingerJointsIdx[i][0] == fakePointIdx){
+
+            if(fingerJointsIdx[i][1] > minLen){
+                int idxx = fingerJointsIdx[i][1] - scale;
+                int maxidx = 3;
+                fingerJointsIdx[i][0] = max(maxidx,idxx);
+                fingerJointsValid[i][0] = 0;
+
+            }
+            qDebug()<<"changechange head";
         }
 
-        if(fingerJointsIdx[i].size() == 1){
-            fingerJointsIdx[i].push_back(fingerlines[i].size() - 1);
+        if(fingerJointsIdx[i].size() <= 3 && \
+                fabs(fingerlines[i].size() - 1 - fingerJointsIdx[i][fingerJointsIdx[i].size() - 1]) > minLen){
+            int idxx = fingerJointsIdx[i][fingerJointsIdx[i].size() - 1] + scale;
+            int maxidx = fingerlines[i].size() - 3;
+            fingerJointsIdx[i].push_back(min(maxidx,idxx));
+            fingerJointsValid[i].push_back(0);
+            qDebug()<<"pushpushpush end";
         }
+
+//        if(fingerJointsIdx[i].size() <= 3 && fingerJointsIdx[i].size() > 0 \
+//                && fabs(fingerJointsIdx[i][0]) > minLen){
+//            int idxx = fingerJointsIdx[i][0] - scale;
+//            int maxidx = 3;
+//            fingerJointsIdx[i].insert(fingerJointsIdx[i].begin(),max(maxidx,idxx));
+//            fingerJointsValid[i].insert(fingerJointsValid[i].begin(),0);
+
+//            qDebug()<<"pushpushpush head";
+//        }
+
+//        if(fingerJointsIdx[i].size() == 1){
+//            fingerJointsIdx[i].push_back(fingerlines[i].size() - 1);
+//        }
     }
 
     for(int i = 0;i < fingerJointsIdx.size();i++){
         while(fingerJointsIdx[i].size() < 4){
             fingerJointsIdx[i].push_back(fakePointIdx);
+            fingerJointsValid[i].push_back(-1);
         }
     }
 
     if(thumbIdx >= 0 && thumbIdx < fingerlines.size()){
         deque<Point> line = fingerlines[thumbIdx];
         vector<int> idxs = fingerJointsIdx[thumbIdx];
+        vector<int> valids = fingerJointsValid[thumbIdx];
         for(int j = 0; j < idxs.size(); j ++){
             Point pt;
+            int valid;
             if(idxs[j] == fakePointIdx){
                 pt = fakeend;
+                valid = -1;
             }else{
                 pt = line[idxs[j]];
+                valid = valids[j];
             }
             jointPts[0][3 - j] = pt;
+            joint_valid[0][3 - j] = valid;
         }
 
         int count = 1;
@@ -206,14 +267,20 @@ void HandStructure2D::initPoints(){
                 continue;
             deque<Point> line = fingerlines[i];
             vector<int> idxs = fingerJointsIdx[i];
+            vector<int> valids = fingerJointsValid[i];
+
             for(int j = 0; j < idxs.size(); j ++){
                 Point pt;
+                int valid;
                 if(idxs[j] == fakePointIdx){
                     pt = fakeend;
+                    valid = -1;
                 }else{
                     pt = line[idxs[j]];
+                    valid = valids[j];
                 }
                 jointPts[count][3 - j] = pt;
+                joint_valid[count][3 - j] = valid;
             }
             count ++;
         }
@@ -242,8 +309,62 @@ void HandStructure2D::initPoints(){
     }
 
     syncVec();
+
+
+
+    Mat img = imread(folder_path + "gesture.jpg");
+
+    qDebug()<<"draw valid";
+
+    cv::circle(img,centerPt,5,Scalar(paintColor[5].b,paintColor[5].g,paintColor[5].r),1,CV_AA);
+
+    for(int i = 0; i < 5; i ++){
+        Color colori = paintColor[i];
+        for(int j = 0; j < 4; j ++){
+            if(joint_valid[i][j] > -1){
+                if(joint_valid[i][j] == 0){
+                    cv::circle(img,jointPts[i][j],5,Scalar(128,128,128),1,CV_AA);
+                }else if(joint_valid[i][j] == 1){
+                    cv::circle(img,jointPts[i][j],5,Scalar(colori.b,colori.g,colori.r),1,CV_AA);
+                }
+
+                if(j > 0){
+                    if(joint_valid[i][j] > -1 && joint_valid[i][j - 1] > -1)
+                        cv::line(img,jointPts[i][j],jointPts[i][j - 1],Scalar(colori.b,colori.g,colori.r),1,CV_AA);
+                }else{
+                    if(joint_valid[i][j] > -1)
+                        cv::line(img,jointPts[i][j],centerPt,Scalar(colori.b,colori.g,colori.r),1,CV_AA);
+                }
+            }
+        }
+    }
+
+    imwrite(folder_path + "hand_joints_g.png",img);
 }
 
+
+void HandStructure2D::fitSkeleton_parb(){
+    qDebug()<<"------------fitSkeleton_parb------------";
+
+    Mat img = imread(folder_path + "gesture.jpg");
+
+    for(int i = 0; i < 5; i ++){
+        QVector2D pt[5] = {center,joints[i][0],joints[i][1],joints[i][2],joints[i][3]};
+        qDebug()<<"joints  "<<i<<"="<<joints[i][0];
+
+        for(int j = 0; j < 5; j ++){
+            QVector2D pt1 = pt[j];
+            QVector2D pt2 = pt[j + 1];
+
+//            if(pt1 == fakeendvec || pt2 == fakeendvec){
+//                dir_valid[j] = 0;
+//                qDebug()<<i<<j<<pt1<<pt2;
+//            }else{
+
+        }
+    }
+
+}
 
 void HandStructure2D::fitSkeleton(){
     qDebug()<<"------------fitSkeleton------------";
@@ -256,7 +377,8 @@ void HandStructure2D::fitSkeleton(){
 
         QVector2D dir[4];
 
-        float rad[4];
+        float rad[4] = {0,0,0,0};
+        float len[4] = {-1,-1,-1,-1};
         Finger2D *f = fingers[i];
 
         int dir_valid[4] = {1,1,1,1};
@@ -272,6 +394,7 @@ void HandStructure2D::fitSkeleton(){
                 dir[j] = pt2 - pt1;
                 dir[j].normalize();
                 rad[j] = acos(QVector2D::dotProduct(dir[j],QVector2D(1,0)) / dir[j].length());
+                len[j] = dir[j].length();
                 qDebug()<<dir[j]<<"acos ="<<rad[j];
 
                 if(dir[j].y() < 0){
@@ -333,7 +456,7 @@ void HandStructure2D::fitSkeleton(){
                 emprad = 2 * CV_PI - emprad;
             }
 
-            qDebug()<<"rad[2] = "<<rad[3]<<"emprad"<<emprad;
+            qDebug()<<"rad[3] = "<<rad[3]<<"emprad"<<emprad;
             if(rad[2] - emprad > CV_PI){
                 empradave = (2 * CV_PI - (rad[3] - emprad))/ 4.0;
                 rad[0] = emprad + empradave;
@@ -479,7 +602,7 @@ void HandStructure2D::adjustSkeleton(){
     int notfit = 1;
     int count = 0;
     while(notfit){
-        if(count ++ > 3)
+        if(count ++ > -1)
             break;
         int tmpnotfit = 0;
 
@@ -537,7 +660,8 @@ void HandStructure2D::adjustSkeleton(){
 
             qDebug()<<scale<<moveDir;
             cv::line(img,Point(center.x(),center.y()),Point(center.x() + scale * moveDir.x(),center.y() + scale * moveDir.y()),Scalar(128,128,128));
-            imwrite(folder_path+"center_redef.png",img);
+            char c = '0' + (count - 1);
+            imwrite(folder_path+"center_redef"+c+".png",img);
             QVector2D newcenter = center + scale * moveDir;
 
             initPoints();

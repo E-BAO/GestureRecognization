@@ -29,7 +29,7 @@ public:
     PickPoint *handCtPoint;
     Point *handCenter;
     int step;
-    HandStructure2D *handStructure2d;
+//    HandStructure2D *handStructure2d;
 
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;

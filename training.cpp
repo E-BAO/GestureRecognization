@@ -39,6 +39,18 @@ void deque2vector(deque<Point> &in_deques, vector<Point> &out_vectors){
 
 void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 {
+
+    Scalar c_red(0,0,255);
+    Scalar c_yellow(0,255,255);
+    Scalar c_green(0,255,0);
+    Scalar c_cyan(255,255,0);
+    Scalar c_blue(255,0,0);
+    Scalar c_black(0, 0, 0);
+
+    Scalar paintColor[5] = {
+        c_red,c_yellow,c_green,c_cyan,c_blue
+    };
+
 //    qDebug()<<"image gesture"<<indexofImg;
 
     Scalar color;
@@ -80,8 +92,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 //    /*******膨胀操作******/
 
-    Mat bw_thinning = bw.clone();
-
     Mat bw_inv = Mat(bw.size(), CV_8UC1,255) - bw;
 
     imwrite(folder_path + "bw_inv.png", bw_inv);
@@ -96,18 +106,6 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 //    imshow("RemoveSmallRegion", bw_inv);
     imwrite(folder_path + "bw_RemoveHole.png",bw_inv);
 
-    /// 腐蚀操作  very important
-    int erosion_type = MORPH_RECT;
-    int erosion_size = 1;
-    Mat element = getStructuringElement( erosion_type,
-                                         Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-                                         Point( erosion_size, erosion_size ) );
-
-    erode(bw, bw, element );
-
-    RemoveSmallRegion(bw, bw, 40, 1, 1);
-    RemoveSmallRegion(bw, bw, 40, 1, 0);
-
 //    RemoveSmallRegion(bw, bw, 20, 1, 1);
 //    RemoveSmallRegion(bw, bw, 20, 1, 0);
 //    imshow("bw", bw);
@@ -118,8 +116,12 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     Mat thin = bw_inv.clone();//src_gray_inv_bw.clone();
 
     thinning(thin, thin);
-
     imwrite(folder_path + "thin.png",thin);
+
+//    removeDoubleLine(thin,thin);
+
+
+    imwrite(folder_path + "thin_remove.png",thin);
 
     int dilation_type = MORPH_RECT;
     int dilation_size = 1;
@@ -337,6 +339,85 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     qDebug()<<"tubao size = "<<curve_vex.size();
 
+
+
+    int maxPixAmont = bw_inv.rows * bw_inv.cols;
+
+    /// 腐蚀操作  very important
+    int erosion_type = MORPH_RECT;
+    int erosion_size = 1;
+    Mat element = getStructuringElement( erosion_type,
+                                         Size( 2*erosion_size + 1, 2*erosion_size+1 ),
+                                         Point( erosion_size, erosion_size ) );
+
+    erode(bw, bw, element );
+
+    floodFill(bw,Point(1,1),Scalar(0),&ccomp, Scalar(25), Scalar(25));
+
+    RemoveSmallRegion(bw, bw, 100, 1, 1);
+    RemoveSmallRegion(bw, bw, 100, 1, 0);
+
+    imwrite(folder_path + "handPalm_region.png",bw);
+
+    vector<vector<Point>> contours4;
+    vector<Vec4i> hierarchy4;
+    ///contours
+    /// the lines are closed here
+    qDebug()<<"lelellel";
+    findContours(bw, contours4,hierarchy4,CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    qDebug()<<"hhfahsdfas";
+
+    Mat draw_palmRegion;
+
+    qDebug()<<"palm ontours fond size ="<<contours4.size();
+
+    int maxArea = 0;
+
+    for(int i = 0;i < contours4.size() ; i++){
+        Mat region = Mat::zeros( bw.size(), CV_8UC1);
+        drawContours( region, contours4, i, Scalar(255), 1, 8, vector<Vec4i>(), 0, Point() );//画轮廓
+        floodFill(region,Point(0,0),Scalar(255),&ccomp, Scalar(25), Scalar(25));
+        Mat region_inv = Mat(region.size(), CV_8UC1,255) - region;
+
+        int dilation_type = MORPH_RECT;
+        int dilation_size = 3;
+        Mat element1 = getStructuringElement( dilation_type,
+                                              Size( 2*dilation_size + 1, 2*dilation_size+1 ),
+                                              Point( dilation_size, dilation_size ) );
+
+        dilate( region_inv, region_inv, element1 );
+
+        int area = countMat(region_inv,255);
+        if(area > maxArea){
+            maxArea = area;
+            draw_palmRegion = region_inv;
+        }
+    }
+
+    blur(draw_palmRegion,draw_palmRegion,Size(5,5));
+    threshold(draw_palmRegion,draw_palmRegion,1,255,CV_THRESH_BINARY);
+    RemoveSmallRegion(draw_palmRegion, draw_palmRegion, 100, 1, 1);
+    RemoveSmallRegion(draw_palmRegion, draw_palmRegion, 100, 1, 0);
+    Mat palmRegion = Mat(draw_palmRegion.size(), CV_8UC1,255) - draw_palmRegion;
+    imwrite(folder_path + "draw_palmRegion.png",palmRegion);
+
+
+    vector<vector<Point>> contours5;
+    vector<Vec4i> hierarchy5;
+    ///contours
+    /// the lines are closed here
+    findContours(draw_palmRegion, contours5,hierarchy5,CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+    Mat draw_palmContours = Mat::zeros( draw_palmRegion.size(), CV_8UC1);
+
+    qDebug()<<"contours palm size ="<<contours5.size();
+
+    drawContours(draw_palmContours, contours5, 0, Scalar(255), 1, 8, vector<Vec4i>(), 0, Point() );//画轮廓
+
+//    rectangle(draw_palmContours,Point(0,0),Point(draw_palmContours.cols - 1,draw_palmContours.rows - 1),Scalar(0),1);
+
+    imwrite(folder_path + "draw_palmContours.png",draw_palmContours);
+
     double dist, maxdist = -1;
 
     Point center;  // center of hand
@@ -345,7 +426,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
         for(int j = 0;j< draw_handcontours.rows;j++)
         {
 
-            dist = pointPolygonTest(contours3[0], Point(i,j),true);
+            dist = pointPolygonTest(contours5[0], Point(i,j),true);
             if(dist > maxdist)
             {
                 maxdist = dist;
@@ -897,7 +978,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     //1.6  1.05
     //0.7
-    float threshold1 = 0.7, threshold2 = 1.05;
+    float threshold1 = 0.6, threshold2 = 1.05;
 
     int x1,y1,d1,r1,x2,y2,d2,r2;
     r1 = sqrt(maxDistsqr) * threshold1;//maxdist * threshold1;//
@@ -914,6 +995,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     cv::circle(draw_handcontours, center, 2, cv::Scalar(255),1,CV_AA);// adjusted
 
     imwrite(folder_path + "draw_center.png",draw_handcontours);
+
+    imwrite(folder_path + "draw_centerhhh.png",draw_handcontours);
 
     int x = x1,y = y1;
     //    while(x <= y){
@@ -1153,7 +1236,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
         qDebug()<<"distfromcenter ll2 ="<<distfromcenter2<<r2;
 
         /////r11111
-        if(line.size() > r1){
+        if(line.size() > 1.5 * r1){
             if(distfromcenter1 > r2){
                 finger_ends.push_back(pt1);
             }
@@ -1913,20 +1996,9 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
     }
 
-    Scalar c_red(0,0,255);
-    Scalar c_yellow(0,255,255);
-    Scalar c_green(0,255,0);
-    Scalar c_cyan(255,255,0);
-    Scalar c_blue(255,0,0);
-    Scalar c_black(0, 0, 0);
-
-    Scalar paintColor[6] = {
-        c_red,c_yellow,c_green,c_cyan,c_blue,c_black
-    };
-
 
     for(int i = 0; i < fingerLines.size(); i ++){
-        color = paintColor[i%6];
+        color = paintColor[i%5];
 
         for(int j = 0; j < fingerLines[i].size(); j ++){
             finger_img.at<Vec3b>( fingerLines[i][j]) = Vec3b(color[0],color[1],color[2]);

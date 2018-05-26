@@ -53,7 +53,6 @@ private:
     Point fakeend = Point(-1,-1);
     QVector2D fakeendvec = QVector2D(-1,-1);
     int fakePointIdx = -1;
-    int indexofImg;
 
 public:
     HandStructure2D();
@@ -61,6 +60,9 @@ public:
     QVector2D joints[5][4];
     Point centerPt;
     Point jointPts[5][4];
+    int joint_valid[5][4];
+
+    int indexofImg;
 
     void readFile(QString filename,vector<deque<Point>> &fingerlines, vector<vector<int>> &fingerJointsIdx, Point &center, int &thumbIdx, int &adist);
     void writeFile(QString filename);
@@ -70,10 +72,14 @@ public:
     void syncPts();
     void syncVec();
     void fitSkeleton();
+    void fitSkeleton_parb();
     void initPoints();
+    void initPoints_parb();
+
     void sortFingers();
     void adjustSkeleton();
     float calVariance();
+    void calGesture();
 
     //    void clear();
 
