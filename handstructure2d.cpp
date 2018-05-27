@@ -1,4 +1,5 @@
 #include "handstructure2d.h"
+#include "bline.h"
 
 #include <QVector2D>
 #include <QFile>
@@ -26,6 +27,15 @@ HandStructure2D::HandStructure2D()
 {
 //    calGesture();
 }
+
+
+
+
+
+
+
+            }
+
 
 void HandStructure2D::calGesture(){
 
@@ -182,7 +192,6 @@ void HandStructure2D::initPoints(){
     vector<vector<int>> fingerJointsValid;
 
     for(int i = 0;i < fingerJointsIdx.size();i++){
-        vector<int> joints_valid;
         for(int j = 0; j < fingerJointsIdx[i].size(); j ++){
             if(fingerJointsIdx[i][j] == fakePointIdx){
                 joints_valid.push_back(-1);
@@ -221,7 +230,6 @@ void HandStructure2D::initPoints(){
             qDebug()<<"pushpushpush end";
         }
 
-//        if(fingerJointsIdx[i].size() <= 3 && fingerJointsIdx[i].size() > 0 \
 //                && fabs(fingerJointsIdx[i][0]) > minLen){
 //            int idxx = fingerJointsIdx[i][0] - scale;
 //            int maxidx = 3;
@@ -308,13 +316,10 @@ void HandStructure2D::initPoints(){
         }
     }
 
-    syncVec();
-
 
 
     Mat img = imread(folder_path + "gesture.jpg");
 
-    qDebug()<<"draw valid";
 
     cv::circle(img,centerPt,5,Scalar(paintColor[5].b,paintColor[5].g,paintColor[5].r),1,CV_AA);
 
@@ -328,18 +333,10 @@ void HandStructure2D::initPoints(){
                     cv::circle(img,jointPts[i][j],5,Scalar(colori.b,colori.g,colori.r),1,CV_AA);
                 }
 
-                if(j > 0){
-                    if(joint_valid[i][j] > -1 && joint_valid[i][j - 1] > -1)
-                        cv::line(img,jointPts[i][j],jointPts[i][j - 1],Scalar(colori.b,colori.g,colori.r),1,CV_AA);
-                }else{
-                    if(joint_valid[i][j] > -1)
-                        cv::line(img,jointPts[i][j],centerPt,Scalar(colori.b,colori.g,colori.r),1,CV_AA);
-                }
             }
         }
     }
 
-    imwrite(folder_path + "hand_joints_g.png",img);
 }
 
 
@@ -371,6 +368,7 @@ void HandStructure2D::fitSkeleton(){
 
     Mat img = imread(folder_path + "gesture.jpg");
 
+
     for(int i = 0; i < 5; i ++){
         QVector2D pt[5] = {center,joints[i][0],joints[i][1],joints[i][2],joints[i][3]};
         qDebug()<<"joints  "<<i<<"="<<joints[i][0];
@@ -387,7 +385,6 @@ void HandStructure2D::fitSkeleton(){
             QVector2D pt1 = pt[j];
             QVector2D pt2 = pt[j + 1];
 
-            if(pt1 == fakeendvec || pt2 == fakeendvec){
                 dir_valid[j] = 0;
                 qDebug()<<i<<j<<pt1<<pt2;
             }else{
@@ -424,7 +421,6 @@ void HandStructure2D::fitSkeleton(){
 
         int amount_b = dir_valid[3] * 2* 2* 2 + dir_valid[2] * 2* 2 + dir_valid[1] * 2 + dir_valid[0];
 
-        qDebug()<<"amount_b="<<amount_b;
 
         QVector2D empdir;
         float empradave;
@@ -449,25 +445,8 @@ void HandStructure2D::fitSkeleton(){
             //1000
         case 8:
             qDebug()<<"//1000";
-            empdir = pt[4] - pt[0];
-            emprad = acos(QVector2D::dotProduct(empdir,QVector2D(1,0)) / empdir.length());
 
-            if(empdir.y() < 0){
-                emprad = 2 * CV_PI - emprad;
-            }
 
-            qDebug()<<"rad[3] = "<<rad[3]<<"emprad"<<emprad;
-            if(rad[2] - emprad > CV_PI){
-                empradave = (2 * CV_PI - (rad[3] - emprad))/ 4.0;
-                rad[0] = emprad + empradave;
-                rad[1] = emprad;
-                rad[2] = emprad - empradave;
-            }else{
-                empradave = (rad[3] - emprad)/ 4.0;
-                rad[0] = emprad - empradave;
-                rad[1] = emprad;
-                rad[2] = emprad + empradave;
-            }
 
             break;
 

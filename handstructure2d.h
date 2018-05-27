@@ -80,6 +80,10 @@ public:
     void adjustSkeleton();
     float calVariance();
     void calGesture();
+    void findRoot();
+
+    void calBLine();
+
 
     //    void clear();
 

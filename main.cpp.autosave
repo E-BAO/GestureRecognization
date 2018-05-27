@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 //        imwrite("/Users/ebao/study/lab/Gesture/images/gestures_pre_clr/finger_img" + to_string(i) + ".png",outimg);
 //    }
 
-    for(int i = 0;i <= 10; i ++){
+    for(int i = 0;i <= 0; i ++){
         HandStructure2D *handStructure2d = new HandStructure2D();
         handStructure2d->indexofImg = i;
         handStructure2d->calGesture();

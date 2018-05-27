@@ -11,8 +11,10 @@
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include <deque>
+#include <vector>
 
 using namespace cv;
+using namespace std;
 
 QImage cvMat2QImage(const Mat& mat);
 Mat QImage2cvMat(QImage image);
@@ -26,5 +28,9 @@ int compare (const void * a, const void * b);
 int comparef (const void * a, const void * b);
 
 int compared (const void * a, const void * b);
+
+void createCurve(vector<Point> &originPoint,vector<Point> &curvePoint);
+
+bool polynomial_curve_fit(std::vector<cv::Point>& key_point, int n, cv::Mat& A);
 
 #endif // FRAMEWORK_H
