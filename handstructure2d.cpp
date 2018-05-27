@@ -583,7 +583,6 @@ void HandStructure2D::adjustSkeleton(){
     while(notfit){
         if(count ++ > -1)
             break;
-        int tmpnotfit = 0;
 
 
         float radsum = 0;

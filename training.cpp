@@ -964,6 +964,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
     vector<Point> finger_ends_good;
     findFingerLine(folder_path,thin,lines,curve_vex,finger_ends_good);
 
+    int good_finger_size = finger_ends_good.size();
+    qDebug()<<"finger_ends_good .size ===" <<finger_ends_good.size();
+
+
 //    Mat jjjjjj = thin.clone();
 //    for(int i = 0; i < finger_ends_good.size(); i ++){
 //        cv::circle(jjjjjj, finger_ends_good[i], 10, cv::Scalar(255),1,CV_AA);// adjusted
@@ -1219,6 +1223,8 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
 
 //    qDebug("finger_lines_far.siez = %d",finger_lines_far.size());
 
+    if(finger_ends_good.size() < 5)
+    {
     for(int i = 0;i < finger_lines_far.size(); i ++){
         deque<Point> line = finger_lines_far[i];
         if(line.size() < 10)
@@ -1273,6 +1279,7 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
         }
     }
 
+    }
 
     Mat finger_ends_imagecl = finger_ends_image.clone();
 
@@ -1589,6 +1596,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
                         vector<int> levels;
                         pts.push_back(p);
                         inds.push_back(0);
+                        if(i < good_finger_size)
+                            levels.push_back(level_i);
+                        else
+                            levels.push_back(1);
                         points_onlines.push_back(pts);
                         points_ol_idx.push_back(inds);
                         points_ol_level.push_back(levels);
@@ -1675,6 +1686,10 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             fingerJoints.push_back(points_onlines[i]);
             fingerJointsIdx.push_back(points_ol_idx[i]);
             fingerJointsLv.push_back(points_ol_level[i]);
+
+            if(points_ol_level[i].size() != fingerJointsIdx[i].size())
+                qDebug()<<"error: lv counts"<<points_ol_level[i].size()<<fingerJointsIdx[i].size();
+
             deque<Point> line_i = lines[i];
             vector<Point> vec_line;
             vec_line.assign(line_i.begin(),line_i.end());
@@ -1682,6 +1697,35 @@ void training(string folder_path, vector<Point> &out_para, Mat &output_img)
             for(int k = 0;k < points_onlines[i].size();k++)
                 circle(draw_good_joints,points_onlines[i][k],5,color,-1);
         }
+    }
+
+
+
+    while(fingerJointsIdx.size() > 5){
+        int n = fingerJointsIdx.size();
+        int min_count = 1e6;
+        int min_idx = 0;
+        for(int i = 0; i < n; i++){
+            int count = 0;
+            for(int j = 0;j < fingerJointsIdx[i].size(); j ++){
+                if(fingerJointsLv[i][j] == 0){
+                    count += 10;
+                    break;
+                }
+
+                if(fingerJointsIdx[i][j]!= -1)
+                    count++;
+            }
+            if(count < min_count){
+                min_count = count;
+                min_idx = i;
+            }
+        }
+
+        fingerJointsIdx.erase(fingerJointsIdx.begin() + min_idx);
+        fingerLines.erase(fingerLines.begin() + min_idx);
+        fingerJoints.erase(fingerJoints.begin() + min_idx);
+        fingerJointsLv.erase(fingerJointsLv.begin() + min_idx);
     }
 
     imwrite(folder_path + "draw_good_joints.png",draw_good_joints);
